@@ -1,0 +1,130 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  background: #0a0a0f;
+  color: #f0f0f8;
+  min-height: 100vh;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 72px;
+  background: #12121a;
+  border-right: 1px solid #2a2a3a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  gap: 8px;
+  z-index: 100;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: #7c6af7;
+  margin-bottom: 24px;
+  letter-spacing: -1px;
+}
+
+.sidebar button {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #555570;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s;
+}
+
+.sidebar button:hover, .sidebar button.active {
+  background: #1a1a26;
+  color: #7c6af7;
+}
+
+.main {
+  margin-left: 72px;
+  padding: 32px;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.card {
+  background: #12121a;
+  border: 1px solid #2a2a3a;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #555570;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 24px;
+}
+
+.btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary { background: #7c6af7; color: white; }
+.btn-primary:hover { background: #9180f9; }
+.btn-outline { background: transparent; border: 1px solid #2a2a3a; color: #8888aa; }
+.btn-outline:hover { border-color: #7c6af7; color: #7c6af7; }
+
+.progress-bar {
+  height: 6px;
+  background: #1a1a26;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c6af7, #4ecdc4);
+  border-radius: 10px;
+  transition: width 0.8s ease;
+}
+
+input, textarea {
+  background: #1a1a26;
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #f0f0f8;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus { border-color: #7c6af7; }
+input::placeholder, textarea::placeholder { color: #555570; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
