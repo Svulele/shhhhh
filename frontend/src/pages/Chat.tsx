@@ -9,7 +9,6 @@ export default function Chat({ material }: Props) {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const apiKey = localStorage.getItem('shhhh_api_key') || ''
   const personality = localStorage.getItem('shhhh_personality') || 'friendly'
   const name = localStorage.getItem('shhhh_name') || 'Sbulele'
 
@@ -23,14 +22,13 @@ export default function Chat({ material }: Props) {
     try {
       const res = await axios.post('http://127.0.0.1:8000/api/chat/', {
         message: msg,
-        api_key: apiKey,
         personality,
         user_name: name,
         material_context: material?.content_text || '',
       })
       setMessages(prev => [...prev, { role: 'ai', text: res.data.reply }])
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'ai', text: '❌ Error: ' + (e.response?.data?.detail || 'Check your API key in Settings') }])
+      setMessages(prev => [...prev, { role: 'ai', text: '❌ Error: ' + (e.response?.data?.detail || 'Backend/API error') }])
     }
     setLoading(false)
   }

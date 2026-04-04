@@ -21,12 +21,9 @@ export default function Settings() {
         </div>
   
         <div className="card" style={{ marginBottom: 12 }}>
-          <div className="card-title">Anthropic API Key</div>
-          <input type="password" defaultValue={localStorage.getItem('shhhh_api_key') || ''}
-            onChange={e => save('shhhh_api_key', e.target.value)}
-            style={{ width: '100%' }} placeholder="sk-ant-..." />
-          <div style={{ marginTop: 10, fontSize: 13, color: '#555570' }}>
-            Get a free key at <strong style={{ color: '#7c6af7' }}>console.anthropic.com</strong>
+          <div className="card-title">API Key Setup</div>
+          <div style={{ fontSize: 13, color: '#555570' }}>
+            API key is now read securely from the backend file <strong style={{ color: '#7c6af7' }}>backend/key.env</strong>.
           </div>
         </div>
   
