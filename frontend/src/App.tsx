@@ -8,6 +8,7 @@ import './App.css'
 
 export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings'
 export type Theme = 'dark' | 'light'
+export type Vibe  = 'gentle' | 'balanced' | 'strict' | 'chill'
 
 export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'dark', toggle: () => {} })
 export const useTheme = () => useContext(ThemeCtx)
@@ -20,51 +21,33 @@ export const NAV: { page: Page; icon: React.ReactNode }[] = [
   { page: 'settings',  icon: <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
 ]
 
-// ── Floating nav ──────────────────────────────────────────────
-// Home: always fully expanded, no collapse
-// Other pages: collapses to active icon on idle, expands smoothly on hover
-// Animation uses CSS overflow + width on each pill — no DOM node swapping
+/* ── Floating nav — collapses on non-home, always open on home ── */
 function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
   const isHome = page === 'dashboard'
-  const [hovered, setHovered] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [hov, setHov]   = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>|null>(null)
 
-  const onEnter = () => {
-    if (isHome) return
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setHovered(true)
-  }
-  const onLeave = () => {
-    if (isHome) return
-    timerRef.current = setTimeout(() => setHovered(false), 350)
-  }
+  const enter = () => { if (isHome) return; if (timer.current) clearTimeout(timer.current); setHov(true) }
+  const leave = () => { if (isHome) return; timer.current = setTimeout(() => setHov(false), 350) }
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  // expanded when: on home (always) OR hovered on other pages
-  const expanded = isHome || hovered
+  const expanded = isHome || hov
 
   return (
-    <nav
-      className="float-nav"
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-    >
+    <nav className="float-nav" onMouseEnter={enter} onMouseLeave={leave}>
       {NAV.map(n => {
         const active  = n.page === page
         const visible = expanded || active
         return (
-          <button
-            key={n.page}
+          <button key={n.page}
             className={`float-nav-item${active ? ' active' : ''}`}
-            onClick={() => { setPage(n.page); if (!isHome) setHovered(false) }}
+            onClick={() => { setPage(n.page); if (!isHome) setHov(false) }}
             style={{
-              // non-active items collapse to zero width when not expanded
-              maxWidth: visible ? 52 : 0,
-              opacity: visible ? 1 : 0,
-              overflow: 'hidden',
-              padding: 0,
-              transition: 'max-width 0.32s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease',
+              maxWidth:  visible ? 52 : 0,
+              opacity:   visible ? 1  : 0,
+              overflow:  'hidden',
+              padding:   0,
+              transition:'max-width 0.32s cubic-bezier(0.34,1.2,0.64,1), opacity 0.22s ease',
               pointerEvents: visible ? 'auto' : 'none',
             }}
           >
@@ -85,8 +68,7 @@ export default function App() {
 
   const toggle = () => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    localStorage.setItem('shh_theme', next)
+    setTheme(next); localStorage.setItem('shh_theme', next)
   }
 
   useEffect(() => {
@@ -97,10 +79,11 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={{ theme, toggle }}>
+      {/* No sidebar — full bleed app shell */}
       <div className="app">
         <div className={isHome ? 'main-home' : 'main'} key={page}>
           <div className="page-enter">
-            {page === 'dashboard' && <Dashboard material={material} setPage={setPage} />}
+            {page === 'dashboard' && <Dashboard setPage={setPage} />}
             {page === 'library'   && <Library setMaterial={setMaterial} setPage={setPage} />}
             {page === 'chat'      && <Chat material={material} />}
             {page === 'pomodoro'  && <Pomodoro />}
@@ -108,7 +91,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Single source of truth for nav — never render inside page components */}
+        {/* Single nav — never inside page components */}
         <FloatingNav page={page} setPage={setPage} />
       </div>
     </ThemeCtx.Provider>
