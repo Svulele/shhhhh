@@ -2,41 +2,43 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../App'
 import type { Page } from '../App'
 
-// ─── Types ───────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────
 interface Profile {
   name: string; ai: string; goals: string[]
   location: string; lat: number | null; lon: number | null
   onboarded: boolean
 }
-interface Weather { temp: number; condition: string }
 interface StudySession { bookTitle: string; page: number; totalPages: number }
 
-// ─── Quotes ──────────────────────────────────────────────────
+// ── Quotes ───────────────────────────────────────────────────
 const QUOTES = [
   { text: 'The more that you read, the more things you will know.', author: 'Dr. Seuss' },
   { text: 'An investment in knowledge pays the best interest.', author: 'Benjamin Franklin' },
   { text: 'Live as if you were to die tomorrow. Learn as if you were to live forever.', author: 'Gandhi' },
-  { text: 'The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice.', author: 'Brian Herbert' },
+  { text: 'The capacity to learn is a gift; the ability to learn is a skill.', author: 'Brian Herbert' },
   { text: 'Develop a passion for learning. If you do, you will never cease to grow.', author: 'Anthony J. D\'Angelo' },
+  { text: 'Education is not preparation for life; education is life itself.', author: 'John Dewey' },
+  { text: 'The beautiful thing about learning is that no one can take it away from you.', author: 'B.B. King' },
 ]
 
-// ─── Onboarding ──────────────────────────────────────────────
+// ── AI options ───────────────────────────────────────────────
 const AI_OPTIONS = [
-  { id: 'claude',  label: 'Claude',  sub: 'by Anthropic' },
-  { id: 'gpt4',    label: 'GPT-4',   sub: 'by OpenAI'    },
-  { id: 'gemini',  label: 'Gemini',  sub: 'by Google'     },
-  { id: 'llama',   label: 'LLaMA',   sub: 'Open source'  },
+  { id: 'claude', label: 'Claude',  sub: 'by Anthropic' },
+  { id: 'gpt4',   label: 'GPT-4',   sub: 'by OpenAI'    },
+  { id: 'gemini', label: 'Gemini',  sub: 'by Google'     },
+  { id: 'llama',  label: 'LLaMA',   sub: 'Open source'  },
 ]
 const GOAL_OPTIONS = ['Exams', 'Research', 'Personal growth', 'Language', 'Coding', 'Creative writing']
 
+// ── Onboarding ────────────────────────────────────────────────
 function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
-  const [step, setStep] = useState(0)
-  const [name, setName] = useState('')
-  const [ai, setAi]     = useState('')
-  const [goals, setGoals] = useState<string[]>([])
+  const [step, setStep]           = useState(0)
+  const [name, setName]           = useState('')
+  const [ai, setAi]               = useState('')
+  const [goals, setGoals]         = useState<string[]>([])
   const [locStatus, setLocStatus] = useState<'idle'|'asking'|'granted'|'denied'>('idle')
-  const [coords, setCoords]   = useState<{ lat: number; lon: number } | null>(null)
-  const [locName, setLocName] = useState('')
+  const [coords, setCoords]       = useState<{ lat: number; lon: number } | null>(null)
+  const [locName, setLocName]     = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { if (step === 0) setTimeout(() => inputRef.current?.focus(), 300) }, [step])
@@ -75,7 +77,6 @@ function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
   return (
     <div className="onboard-wrap">
       <div className="onboard-card">
-        {/* Dots */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 36 }}>
           {[0,1,2,3].map(i => <div key={i} className={`step-dot${i <= step ? ' active' : ''}`} />)}
         </div>
@@ -110,7 +111,7 @@ function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
           <div>
             <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Focus areas</p>
             <p className="onboard-q">What are you studying for?</p>
-            <div className="goal-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {GOAL_OPTIONS.map(g => (
                 <button key={g} className={`goal-chip${goals.includes(g) ? ' active' : ''}`} onClick={() => toggleGoal(g)}>{g}</button>
               ))}
@@ -123,10 +124,11 @@ function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
             <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Almost there</p>
             <p className="onboard-q">Can I see your location?</p>
             <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 28, fontWeight: 300, lineHeight: 1.6 }}>
-              Used only for weather on your home screen. Stays on your device.
+              Used only for weather on your home screen. Stays on your device, always.
             </p>
             {locStatus === 'idle' && (
-              <button className="btn btn-primary" onClick={requestLocation} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button className="btn btn-primary" onClick={requestLocation}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
                 Share location
               </button>
@@ -142,7 +144,7 @@ function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 36, paddingTop: 24, borderTop: '0.5px solid var(--border)' }}>
           {step > 0 && (
             <button className="btn btn-ghost" style={{ padding: '8px 18px' }} onClick={() => setStep(s => s - 1)}>Back</button>
           )}
@@ -158,11 +160,9 @@ function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
   )
 }
 
-// ─── Pomodoro widget ──────────────────────────────────────────
+// ── Pomodoro widget ───────────────────────────────────────────
 const WORK_S  = 25 * 60
 const BREAK_S = 5  * 60
-const CIRC    = 2 * Math.PI * 46
-
 const SOUNDS: Record<string, string> = {
   rain:   'https://cdn.pixabay.com/audio/2022/05/13/audio_257112ef96.mp3',
   forest: 'https://cdn.pixabay.com/audio/2022/03/24/audio_1e91a8dcca.mp3',
@@ -178,16 +178,8 @@ function PomodoroWidget() {
   const ivRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const total  = mode === 'work' ? WORK_S : BREAK_S
-  const pct    = (total - left) / total
-  const offset = CIRC * (1 - pct)
   const mm = String(Math.floor(left / 60)).padStart(2, '0')
   const ss = String(left % 60).padStart(2, '0')
-  const strokeColor = mode === 'work' ? '#7b9ef5' : '#3ecfa0'
-  const playBg      = mode === 'work'
-    ? 'linear-gradient(135deg,#5b8df5,#9070e8)' : 'linear-gradient(135deg,#2ecf94,#4ab8d0)'
-  const playShadow  = mode === 'work'
-    ? '0 5px 18px rgba(90,130,240,0.32)' : '0 5px 18px rgba(46,207,148,0.28)'
 
   useEffect(() => {
     if (running) {
@@ -228,11 +220,11 @@ function PomodoroWidget() {
     setRunning(false); setMode(m); setLeft(m === 'work' ? WORK_S : BREAK_S)
   }
 
-  const soundBtns: { key: string|null; label: React.ReactNode }[] = [
+  const soundBtns: { key: string | null; label: React.ReactNode }[] = [
     { key: 'rain',   label: '🌧' },
     { key: 'forest', label: '🌿' },
     { key: 'white',  label: '〰' },
-    { key: null,     label: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> },
+    { key: null, label: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> },
   ]
 
   return (
@@ -245,97 +237,76 @@ function PomodoroWidget() {
             <button className={`pomo-tab${mode === 'break' ? ' active' : ''}`} onClick={() => switchMode('break')}>Break</button>
           </div>
         </div>
-        <div className="pomo-sessions">
-          {sessions}<small>sessions</small>
+        <div>
+          <div className="pomo-sessions-num">{sessions}</div>
+          <div className="pomo-sessions-lbl">sessions</div>
         </div>
       </div>
 
-      <div className="pomo-body">
-        <div className="pomo-ring-wrap">
-          <svg width="112" height="112" viewBox="0 0 112 112">
-            <circle cx="56" cy="56" r="46" fill="none" stroke="var(--text-4)" strokeWidth="6"/>
-            <circle cx="56" cy="56" r="46" fill="none" stroke={strokeColor}
-              strokeWidth="6" strokeLinecap="round"
-              strokeDasharray={CIRC} strokeDashoffset={offset}
-              style={{ transition: running ? 'stroke-dashoffset 1s linear' : 'none',
-                filter: `drop-shadow(0 0 6px ${strokeColor}60)` }}
-            />
-          </svg>
-          <div className="pomo-ring-center">
-            <div className="pomo-time" style={{ color: strokeColor }}>{mm}:{ss}</div>
-            <div className="pomo-mode">{mode === 'work' ? 'focus' : 'break'}</div>
-          </div>
-        </div>
-
+      {/* Big muted time + bare controls on same row */}
+      <div className="pomo-time-row">
+        <div className="pomo-time">{mm}<span className="sep">:</span>{ss}</div>
         <div className="pomo-controls">
-          <div className="pomo-btns">
-            <button className="btn-reset" onClick={reset} title="Reset">
-              <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-            </button>
-            <button className="btn-play" style={{ background: playBg, boxShadow: playShadow }}
-              onClick={() => setRunning(r => !r)}>
-              {running
-                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              }
-            </button>
-          </div>
-          <div className="sound-row">
-            <span className="sound-lbl">Ambient</span>
-            {soundBtns.map(({ key, label }) => (
-              <button key={String(key)} className={`sound-btn${sound === key ? ' active' : ''}`}
-                onClick={() => setSound(key)}>
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Reset — right next to play */}
+          <button className="pomo-btn" onClick={reset} title="Reset">
+            <svg width="20" height="20" viewBox="0 0 24 24" strokeWidth="1.8">
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+            </svg>
+          </button>
+          {/* Play / pause */}
+          <button className="pomo-btn pomo-btn-play" onClick={() => setRunning(r => !r)}>
+            {running
+              ? <svg width="30" height="30" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              : <svg width="30" height="30" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            }
+          </button>
         </div>
+      </div>
+
+      <div className="pomo-ambient">
+        <span className="ambient-lbl">Ambient</span>
+        {soundBtns.map(({ key, label }) => (
+          <button key={String(key)} className={`sound-btn${sound === key ? ' active' : ''}`}
+            onClick={() => setSound(key)}>
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )
 }
 
-// ─── Weather ──────────────────────────────────────────────────
+// ── Weather pill ──────────────────────────────────────────────
 function WeatherPill({ lat, lon, locationName }: { lat: number|null; lon: number|null; locationName: string }) {
-  const [w, setW] = useState<Weather|null>(null)
+  const [temp, setTemp] = useState<number|null>(null)
 
   useEffect(() => {
     if (!lat || !lon) return
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
       .then(r => r.json())
-      .then(d => {
-        const code = d.current_weather?.weathercode ?? 0
-        const temp = Math.round(d.current_weather?.temperature ?? 0)
-        const conds: Record<number, string> = {
-          0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
-          45:'Foggy',61:'Rain',71:'Snow',80:'Showers',95:'Thunderstorm',
-        }
-        setW({ temp, condition: conds[code] ?? 'Clear' })
-      }).catch(() => {})
+      .then(d => setTemp(Math.round(d.current_weather?.temperature ?? 0)))
+      .catch(() => {})
   }, [lat, lon])
-
-  const sunIcon = (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,200,60,0.85)" strokeWidth="1.9" strokeLinecap="round">
-      <circle cx="12" cy="12" r="4"/>
-      <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
-      <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-      <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-      <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
-    </svg>
-  )
 
   return (
     <div className="weather-pill">
-      {sunIcon}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(250,190,50,0.9)" strokeWidth="1.9" strokeLinecap="round">
+        <circle cx="12" cy="12" r="4"/>
+        <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+        <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+      </svg>
       <div>
-        <div className="weather-temp">{w ? `${w.temp}°` : '—'}</div>
+        <div className="weather-temp">{temp !== null ? `${temp}°` : '—'}</div>
         <div className="weather-loc">{locationName || '…'}</div>
       </div>
     </div>
   )
 }
 
-// ─── Theme toggle ─────────────────────────────────────────────
+// ── Theme toggle ──────────────────────────────────────────────
 function ThemeToggle() {
   const { theme, toggle } = useTheme()
   return (
@@ -348,13 +319,12 @@ function ThemeToggle() {
   )
 }
 
-// ─── Streak dots ──────────────────────────────────────────────
+// ── Streak dots ───────────────────────────────────────────────
 function StreakDots({ count }: { count: number }) {
-  const days = 7
   return (
     <div className="streak-dots">
-      {Array.from({ length: days }).map((_, i) => {
-        const filled = i < Math.min(count % 7 || 7, days)
+      {Array.from({ length: 7 }).map((_, i) => {
+        const filled  = i < Math.min(count % 7 || 7, 7)
         const isToday = i === (new Date().getDay() + 6) % 7
         return <div key={i} className={`s-dot${filled ? ' done' : ''}${isToday ? ' today' : ''}`} />
       })}
@@ -362,13 +332,14 @@ function StreakDots({ count }: { count: number }) {
   )
 }
 
-// ─── Dashboard ────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────
 export default function Dashboard({ setPage }: { material: any; setPage: (p: Page) => void }) {
   const [profile, setProfile] = useState<Profile|null>(null)
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
-  const quote = QUOTES[new Date().getDay() % QUOTES.length]
 
+  const quote   = QUOTES[new Date().getDay() % QUOTES.length]
+  const streak  = Number(localStorage.getItem('shh_streak') ?? 12)
   const session: StudySession|null = (() => {
     try { return JSON.parse(localStorage.getItem('shh_session') ?? 'null') } catch { return null }
   })()
@@ -387,26 +358,16 @@ export default function Dashboard({ setPage }: { material: any; setPage: (p: Pag
   if (!profile?.onboarded) return <Onboarding onDone={p => setProfile(p)} />
 
   const firstName = profile.name.split(' ')[0]
-  const streakCount = Number(localStorage.getItem('shh_streak') ?? 12)
 
   const quickCards = [
-    { label: 'Ask the AI', sub: 'Explain, quiz, summarise', page: 'chat' as Page,
-      color: '#7b9ef5', bg: 'rgba(99,140,245,0.11)', border: 'rgba(99,140,245,0.2)',
-      icon: <svg viewBox="0 0 24 24" stroke="#7b9ef5" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
-    { label: 'My library', sub: 'Books, notes, uploads', page: 'library' as Page,
-      color: '#b07ef7', bg: 'rgba(160,100,220,0.1)', border: 'rgba(160,100,220,0.18)',
-      icon: <svg viewBox="0 0 24 24" stroke="#b07ef7" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/></svg> },
-    { label: 'Start focus', sub: 'Pomodoro + sounds', page: 'pomodoro' as Page,
-      color: '#3ecfa0', bg: 'rgba(40,180,130,0.1)', border: 'rgba(40,180,130,0.16)',
-      icon: <svg viewBox="0 0 24 24" stroke="#3ecfa0" fill="none" strokeWidth="1.75" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg> },
-    { label: 'Daily goals', sub: "Track today's progress", page: 'settings' as Page,
-      color: '#f0a040', bg: 'rgba(240,160,60,0.09)', border: 'rgba(240,160,60,0.16)',
-      icon: <svg viewBox="0 0 24 24" stroke="#f0a040" fill="none" strokeWidth="1.75" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+    { label: 'Ask the AI',   sub: 'Explain, quiz, summarise',   page: 'chat'     as Page, color: '#7b9ef5', bg: 'rgba(99,140,245,0.1)',    border: 'rgba(99,140,245,0.18)',   icon: <svg viewBox="0 0 24 24" stroke="#7b9ef5" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+    { label: 'My library',   sub: 'Books, notes, uploads',       page: 'library'  as Page, color: '#b07ef7', bg: 'rgba(160,100,220,0.09)', border: 'rgba(160,100,220,0.16)',  icon: <svg viewBox="0 0 24 24" stroke="#b07ef7" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/></svg> },
+    { label: 'Start focus',  sub: 'Pomodoro + sounds',           page: 'pomodoro' as Page, color: '#3ecfa0', bg: 'rgba(40,180,130,0.09)',  border: 'rgba(40,180,130,0.15)',   icon: <svg viewBox="0 0 24 24" stroke="#3ecfa0" fill="none" strokeWidth="1.75" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg> },
+    { label: 'Daily goals',  sub: "Track today's progress",      page: 'settings' as Page, color: '#f0a040', bg: 'rgba(240,160,60,0.09)',  border: 'rgba(240,160,60,0.15)',   icon: <svg viewBox="0 0 24 24" stroke="#f0a040" fill="none" strokeWidth="1.75" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
   ]
 
   return (
     <>
-      {/* Topbar */}
       <div className="home-topbar">
         <div className="home-logo">Shhhhh</div>
         <div className="topbar-right">
@@ -415,37 +376,32 @@ export default function Dashboard({ setPage }: { material: any; setPage: (p: Pag
         </div>
       </div>
 
-      {/* Two-column content */}
       <div className="home-inner">
         <div className="home-cols">
 
-          {/* ── Left column ── */}
+          {/* ── Left ── */}
           <div className="home-col">
-            {/* Hero */}
             <div>
               <div className="hero-time">{greeting}</div>
               <div className="hero-name">Hey, <em>{firstName}</em> —<br/>ready to learn?</div>
             </div>
 
-            {/* Streak */}
-            <div className="streak">
+            <div className="card streak">
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <div className="streak-num">{streakCount}</div>
+                <div className="streak-num">{streak}</div>
                 <div className="streak-icon">
                   <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
                 </div>
               </div>
-              <div className="streak-lbl">day streak</div>
-              <StreakDots count={streakCount} />
+              <div className="streak-lbl">Day streak</div>
+              <StreakDots count={streak} />
             </div>
 
-            {/* Quote */}
-            <div className="quote">
+            <div className="card quote">
               <div className="quote-text">"{quote.text}"</div>
               <div className="quote-author">— {quote.author}</div>
             </div>
 
-            {/* Session banner */}
             {session && (
               <button className="session-banner" onClick={() => setPage('library')}>
                 <div className="book-thumb">
@@ -455,14 +411,13 @@ export default function Dashboard({ setPage }: { material: any; setPage: (p: Pag
                   <div className="sess-lbl">Continue reading</div>
                   <div className="sess-title">{session.bookTitle}</div>
                   <div className="sess-prog">
-                    <div className="sess-prog-fill" style={{ width: `${Math.round(session.page/session.totalPages*100)}%` }} />
+                    <div className="sess-prog-fill" style={{ width: `${Math.round(session.page / session.totalPages * 100)}%` }} />
                   </div>
                 </div>
-                <div className="sess-pct">{Math.round(session.page/session.totalPages*100)}%</div>
+                <div className="sess-pct">{Math.round(session.page / session.totalPages * 100)}%</div>
               </button>
             )}
 
-            {/* Quick cards */}
             <div>
               <div className="sec-lbl">What do you want to do?</div>
               <div className="quick-grid">
@@ -473,26 +428,24 @@ export default function Dashboard({ setPage }: { material: any; setPage: (p: Pag
                     </div>
                     <h4>{c.label}</h4>
                     <p>{c.sub}</p>
-                    <div className="quick-arrow">→</div>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* ── Right column ── */}
+          {/* ── Right ── */}
           <div className="home-col" style={{ paddingTop: 4 }}>
             <PomodoroWidget />
 
-            {/* Stats */}
             <div className="stat-grid">
               <div className="stat-card">
-                <div className="sec-lbl" style={{ marginBottom: 4 }}>Today</div>
+                <div className="stat-lbl">Today</div>
                 <div className="stat-value" style={{ color: 'var(--accent)' }}>2h 40m</div>
                 <div className="stat-sub">study time</div>
               </div>
               <div className="stat-card">
-                <div className="sec-lbl" style={{ marginBottom: 4 }}>This week</div>
+                <div className="stat-lbl">This week</div>
                 <div className="stat-value" style={{ color: 'var(--green)' }}>14h</div>
                 <div className="stat-sub">total focus</div>
               </div>

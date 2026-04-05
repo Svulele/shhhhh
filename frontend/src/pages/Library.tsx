@@ -1,91 +1,544 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import type { Page } from '../App'
 
-interface Props {
-  setMaterial: (m: any) => void
-  setPage: (p: any) => void
+// ── Types ─────────────────────────────────────────────────────
+interface Book {
+  id: string; title: string; author: string
+  totalPages: number; currentPage: number
+  coverGradient: string; addedAt: number
+}
+interface Note {
+  id: string; bookId: string; page: number; text: string; createdAt: number
+}
+interface RecapData {
+  bookId: string; fromPage: number; toPage: number
+  summary: string[]; questions: string[]
+}
+type LibView     = 'shelf' | 'reader' | 'recap'
+type ShelfFilter = 'all' | 'progress' | 'finished'
+type ToastKind   = 'success' | 'error' | 'loading'
+
+const GRADIENTS = [
+  'linear-gradient(135deg,#3b4a8a,#5b3fa0)',
+  'linear-gradient(135deg,#1a4a3a,#2d7a5a)',
+  'linear-gradient(135deg,#6b2a1a,#a04a2a)',
+  'linear-gradient(135deg,#2a3a6b,#1a5a8a)',
+  'linear-gradient(135deg,#5a2a6b,#8a3a5a)',
+  'linear-gradient(135deg,#1a3a1a,#3a6b2a)',
+  'linear-gradient(135deg,#6b5a1a,#a08a2a)',
+]
+
+// ── localStorage helpers (metadata only — no PDF bytes) ───────
+const loadBooks = (): Book[] => { try { return JSON.parse(localStorage.getItem('shh_books') ?? '[]') } catch { return [] } }
+const saveBooks = (b: Book[]) => { try { localStorage.setItem('shh_books', JSON.stringify(b)) } catch {} }
+const loadNotes = (): Note[] => { try { return JSON.parse(localStorage.getItem('shh_notes') ?? '[]') } catch { return [] } }
+const saveNotes = (n: Note[]) => { try { localStorage.setItem('shh_notes', JSON.stringify(n)) } catch {} }
+
+// ── IndexedDB — stores raw PDF ArrayBuffers (no size limit) ───
+const DB_NAME = 'shh_pdf_db'
+const DB_VER  = 1
+const STORE   = 'pdfs'
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER)
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(STORE))
+        req.result.createObjectStore(STORE)
+    }
+    req.onsuccess = () => res(req.result)
+    req.onerror   = () => rej(req.error)
+  })
 }
 
-export default function Library({ setMaterial, setPage }: Props) {
-  const [materials, setMaterials] = useState<any[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [selected, setSelected] = useState<any>(null)
+async function savePdf(id: string, buf: ArrayBuffer) {
+  const db  = await openDb()
+  const tx  = db.transaction(STORE, 'readwrite')
+  tx.objectStore(STORE).put(buf, id)
+  return new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error) })
+}
 
-  useEffect(() => { fetchMaterials() }, [])
+async function loadPdf(id: string): Promise<ArrayBuffer | null> {
+  const db  = await openDb()
+  const tx  = db.transaction(STORE, 'readonly')
+  const req = tx.objectStore(STORE).get(id)
+  return new Promise((res, rej) => {
+    req.onsuccess = () => res(req.result ?? null)
+    req.onerror   = () => rej(req.error)
+  })
+}
 
-  const fetchMaterials = async () => {
-    try {
-      const res = await axios.get('http://127.0.0.1:8000/api/upload/materials')
-      setMaterials(res.data)
-    } catch (e) {}
-  }
+async function deletePdf(id: string) {
+  const db = await openDb()
+  const tx = db.transaction(STORE, 'readwrite')
+  tx.objectStore(STORE).delete(id)
+}
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const form = new FormData()
-    form.append('file', file)
-    try {
-      const res = await axios.post('http://127.0.0.1:8000/api/upload/', form)
-      setMaterials(prev => [...prev, res.data])
-      setSelected(res.data)
-      setMaterial(res.data)
-    } catch (e) {
-      alert('Upload failed. Is the backend running?')
+// ── Load pdf.js once ──────────────────────────────────────────
+let pdfjsReady: Promise<any> | null = null
+function ensurePdfjs(): Promise<any> {
+  if (pdfjsReady) return pdfjsReady
+  pdfjsReady = new Promise((res, rej) => {
+    if ((window as any).pdfjsLib) { res((window as any).pdfjsLib); return }
+    const s = document.createElement('script')
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    s.onload = () => {
+      const lib = (window as any).pdfjsLib
+      lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      res(lib)
     }
-    setUploading(false)
-  }
+    s.onerror = rej
+    document.head.appendChild(s)
+  })
+  return pdfjsReady
+}
+
+// ── PDF page renderer ─────────────────────────────────────────
+function PdfPage({ buf, pageNum, scale = 1.4, onLoad }: {
+  buf: ArrayBuffer; pageNum: number; scale?: number; onLoad?: (total: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const taskRef   = useRef<any>(null)
+  const docRef    = useRef<any>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const render = async () => {
+      try {
+        const lib = await ensurePdfjs()
+        if (!docRef.current) {
+          const copy = buf.slice(0)
+          docRef.current = await lib.getDocument({ data: copy }).promise
+          if (cancelled) return
+          onLoad?.(docRef.current.numPages)
+        }
+        const pg = await docRef.current.getPage(Math.max(1, Math.min(pageNum, docRef.current.numPages)))
+        if (cancelled) return
+        const vp = pg.getViewport({ scale })
+        const cv = canvasRef.current
+        if (!cv) return
+        cv.width = vp.width; cv.height = vp.height
+        taskRef.current?.cancel()
+        taskRef.current = pg.render({ canvasContext: cv.getContext('2d')!, viewport: vp })
+        await taskRef.current.promise
+      } catch (e: any) {
+        if (e?.name !== 'RenderingCancelledException') console.warn('PDF:', e)
+      }
+    }
+    render()
+    return () => { cancelled = true; taskRef.current?.cancel() }
+  }, [buf, pageNum, scale])
 
   return (
-    <div>
-      <div className="page-title">My Library</div>
+    <canvas ref={canvasRef} style={{
+      maxWidth: '100%', borderRadius: 8,
+      boxShadow: '0 4px 32px rgba(0,0,0,0.14)',
+      display: 'block', margin: '0 auto',
+    }} />
+  )
+}
 
-      {/* Upload zone */}
-      <label style={{ display: 'block', cursor: 'pointer' }}>
-        <input type="file" accept=".pdf,.txt" onChange={handleUpload} style={{ display: 'none' }} />
-        <div className="card" style={{ border: '2px dashed #2a2a3a', textAlign: 'center', padding: 48, transition: 'all 0.2s' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            {uploading ? 'Uploading...' : 'Drop your study material here'}
-          </div>
-          <div style={{ fontSize: 14, color: '#555570' }}>PDF or TXT · Click to browse</div>
+// ── Toast ─────────────────────────────────────────────────────
+function Toast({ kind, msg }: { kind: ToastKind; msg: string }) {
+  const C = {
+    success: { bg: 'rgba(52,211,153,0.13)', border: 'rgba(52,211,153,0.3)',  dot: '#34d399' },
+    error:   { bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)', dot: '#f87171' },
+    loading: { bg: 'var(--bg-card)',         border: 'var(--border)',         dot: 'var(--accent)' },
+  }[kind]
+  return (
+    <div style={{ position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)', zIndex:300,
+      display:'flex', alignItems:'center', gap:10, padding:'11px 18px', borderRadius:999,
+      background:C.bg, border:`1px solid ${C.border}`, backdropFilter:'blur(20px)',
+      fontSize:13, color:'var(--text-1)', fontFamily:'var(--font-body)', whiteSpace:'nowrap',
+      boxShadow:'0 8px 24px rgba(0,0,0,0.16)', animation:'toastIn .3s cubic-bezier(.34,1.56,.64,1) both',
+    }}>
+      <div style={{ width:7, height:7, borderRadius:'50%', background:C.dot, flexShrink:0,
+        animation: kind==='loading' ? 'pulse 1.4s ease-in-out infinite' : 'none' }} />
+      {msg}
+    </div>
+  )
+}
+
+// ── Notes panel ───────────────────────────────────────────────
+function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: number; onClose: () => void }) {
+  const [notes, setNotes] = useState<Note[]>(() => loadNotes().filter(n => n.bookId === book.id))
+  const [draft, setDraft] = useState('')
+  const add = () => {
+    if (!draft.trim()) return
+    const n: Note = { id: Date.now().toString(), bookId: book.id, page: currentPage, text: draft.trim(), createdAt: Date.now() }
+    const all = [...loadNotes(), n]; saveNotes(all); setNotes(all.filter(x => x.bookId === book.id)); setDraft('')
+  }
+  const del = (id: string) => {
+    const all = loadNotes().filter(n => n.id !== id); saveNotes(all); setNotes(all.filter(n => n.bookId === book.id))
+  }
+  return (
+    <div style={{ position:'absolute', top:0, right:0, bottom:0, width:290, background:'var(--bg-card)', borderLeft:'0.5px solid var(--border)', display:'flex', flexDirection:'column', zIndex:5 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px', borderBottom:'0.5px solid var(--border)' }}>
+        <span style={{ fontSize:13, fontWeight:500, color:'var(--text-1)' }}>Notes</span>
+        <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', display:'flex' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style={{ flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+        <div>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder={`Note for page ${currentPage}…`}
+            style={{ fontSize:13, minHeight:80, resize:'none', marginBottom:8 }} rows={3}/>
+          <button onClick={add} style={{ width:'100%', padding:8, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', borderRadius:10, color:'var(--accent)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)' }}>Save note</button>
         </div>
-      </label>
-
-      {/* Materials list */}
-      <div style={{ marginTop: 24 }}>
-        {materials.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#555570', padding: 40 }}>
-            <div style={{ fontSize: 40 }}>📚</div>
-            <div style={{ marginTop: 12 }}>No materials yet</div>
+        {notes.length === 0 && <p style={{ fontSize:12, color:'var(--text-3)', textAlign:'center', paddingTop:8 }}>No notes yet.</p>}
+        {[...notes].reverse().map(n => (
+          <div key={n.id} style={{ background:'var(--bg)', border:'0.5px solid var(--border)', borderRadius:10, padding:'10px 12px', position:'relative' }}>
+            <div style={{ fontSize:10, color:'var(--text-3)', letterSpacing:1, marginBottom:4 }}>p.{n.page}</div>
+            <div style={{ fontSize:13, color:'var(--text-1)', lineHeight:1.5, fontWeight:300, paddingRight:18 }}>{n.text}</div>
+            <button onClick={() => del(n.id)} style={{ position:'absolute', top:8, right:8, background:'none', border:'none', cursor:'pointer', color:'var(--text-3)' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-        ) : (
-          materials.map((m: any) => (
-            <div key={m.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', marginBottom: 12, border: selected?.id === m.id ? '1px solid #7c6af7' : '1px solid #2a2a3a' }}
-              onClick={() => { setSelected(m); setMaterial(m) }}>
-              <div style={{ width: 44, height: 44, background: 'rgba(124,106,247,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                📕
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, marginBottom: 4 }}>{m.title}</div>
-                <div style={{ fontSize: 13, color: '#555570' }}>{m.total_pages} pages</div>
-              </div>
-              <button className="btn btn-primary" onClick={() => setPage('chat')}>Ask AI</button>
-            </div>
-          ))
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── AI recap ──────────────────────────────────────────────────
+async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON — no markdown:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }]
+      })
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error.message)
+    const text = (data.content ?? []).map((c:any) => c.text ?? '').join('')
+    const p = JSON.parse(text.replace(/```json|```/g,'').trim())
+    return { bookId:book.id, fromPage, toPage, summary:p.summary, questions:p.questions }
+  } catch {
+    return { bookId:book.id, fromPage, toPage,
+      summary:[`You covered pages ${fromPage}–${toPage} of ${book.title}.`,'Key ideas noted.','Keep going to build on this.'],
+      questions:['What was the main idea from this section?','How does it connect to what came before?'] }
+  }
+}
+
+// ── Book card ─────────────────────────────────────────────────
+function BookCard({ book, hasPdf, onClick }: { book: Book; hasPdf: boolean; onClick: () => void }) {
+  const pct  = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0
+  const done = pct >= 100
+  const [hov, setHov] = useState(false)
+  return (
+    <button onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, overflow:'hidden', cursor:'pointer', textAlign:'left', width:'100%', transition:'all .22s', transform:hov?'translateY(-3px)':'none', boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none' }}>
+      <div style={{ height:110, background:book.coverGradient, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 19V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/></svg>
+        <span style={{ position:'absolute', top:10, right:10, background:'rgba(0,0,0,.25)', borderRadius:6, padding:'3px 7px', fontSize:10, color:'rgba(255,255,255,.9)', fontWeight:500 }}>{pct}%</span>
+        {!hasPdf && <span style={{ position:'absolute', bottom:8, left:8, background:'rgba(0,0,0,.4)', borderRadius:6, padding:'2px 6px', fontSize:9, color:'rgba(255,255,255,.7)' }}>re-upload needed</span>}
+      </div>
+      <div style={{ padding:'12px 14px 14px' }}>
+        <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{book.title}</div>
+        <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:10, fontWeight:300 }}>{book.author}</div>
+        <div style={{ height:3, background:'var(--text-4)', borderRadius:99, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .8s ease' }}/>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ── Recap card ────────────────────────────────────────────────
+function RecapCard({ recap, onClose, onAsk }: { recap: RecapData; onClose: () => void; onAsk: (q?: string) => void }) {
+  return (
+    <div style={{ position:'fixed', inset:0, background:'var(--bg)', zIndex:60, display:'flex', alignItems:'center', justifyContent:'center', padding:32 }}>
+      <div style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:24, padding:36, maxWidth:500, width:'100%', maxHeight:'80vh', overflowY:'auto' }}>
+        <div style={{ fontSize:10, letterSpacing:'3px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:12 }}>Session complete</div>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:26, letterSpacing:'-0.5px', color:'var(--text-1)', marginBottom:24, lineHeight:1.2 }}>
+          You read pages {recap.fromPage}–{recap.toPage}
+        </div>
+        <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:12 }}>What you covered</div>
+        {recap.summary.map((s, i) => (
+          <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:10 }}>
+            <div style={{ width:5, height:5, borderRadius:'50%', background:'var(--accent)', marginTop:7, flexShrink:0 }}/>
+            <p style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.6, fontWeight:300 }}>{s}</p>
+          </div>
+        ))}
+        <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--text-3)', margin:'20px 0 12px' }}>
+          Tap a question to ask the AI
+        </div>
+        {recap.questions.map((q, i) => (
+          <button key={i} onClick={() => onAsk(q)}
+            style={{ width:'100%', background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', borderRadius:12, padding:'12px 14px', marginBottom:8, fontSize:13, color:'var(--text-1)', lineHeight:1.55, fontWeight:300, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, fontFamily:'var(--font-body)', transition:'all .18s' }}>
+            {q}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0 }}><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        ))}
+        <div style={{ display:'flex', gap:10, marginTop:24 }}>
+          <button onClick={onClose} style={{ flex:1, padding:11, borderRadius:12, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-2)' }}>Back to shelf</button>
+          <button onClick={() => onAsk()} style={{ flex:1, padding:11, borderRadius:12, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', background:'linear-gradient(135deg,var(--accent),#7b6cf6)', color:'white', border:'none', boxShadow:'0 4px 16px var(--accent-glow)' }}>Open AI chat →</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Shared button styles ──────────────────────────────────────
+const tabStyle = (active: boolean): React.CSSProperties => ({
+  padding:'5px 14px', borderRadius:999, fontSize:12, cursor:'pointer',
+  border:'0.5px solid var(--border)', fontFamily:'var(--font-body)',
+  background:active?'var(--bg-pill)':'transparent',
+  color:active?'var(--text-1)':'var(--text-3)', transition:'all .18s',
+})
+const rdrBtn = (disabled: boolean): React.CSSProperties => ({
+  display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+  borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)',
+  fontSize:12, color:'var(--text-2)', fontFamily:'var(--font-body)',
+  cursor:disabled?'default':'pointer', opacity:disabled?0.35:1, transition:'all .18s',
+})
+
+// ── Main ──────────────────────────────────────────────────────
+export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=>void; setPage:(p:Page)=>void }) {
+  const [books, setBooks]               = useState<Book[]>(loadBooks)
+  const [pdfMap, setPdfMap]             = useState<Map<string, ArrayBuffer>>(new Map())
+  const [view, setView]                 = useState<LibView>('shelf')
+  const [filter, setFilter]             = useState<ShelfFilter>('all')
+  const [activeBook, setActiveBook]     = useState<Book|null>(null)
+  const [activeBuf, setActiveBuf]       = useState<ArrayBuffer|null>(null)
+  const [currentPage, setCurrentPage]   = useState(1)
+  const [totalPages, setTotalPages]     = useState(1)
+  const [sessionStart, setSessionStart] = useState(1)
+  const [showNotes, setShowNotes]       = useState(false)
+  const [recap, setRecap]               = useState<RecapData|null>(null)
+  const [recapLoading, setRecapLoading] = useState(false)
+  const [dragging, setDragging]         = useState(false)
+  const [toast, setToast]               = useState<{kind:ToastKind;msg:string}|null>(null)
+  const fileRef  = useRef<HTMLInputElement>(null)
+  const toastRef = useRef<ReturnType<typeof setTimeout>|null>(null)
+
+  // Persist metadata
+  useEffect(() => { saveBooks(books) }, [books])
+
+  // Session tracker for dashboard banner
+  useEffect(() => {
+    if (activeBook) localStorage.setItem('shh_session', JSON.stringify({
+      bookTitle:`${activeBook.title} — ${activeBook.author}`, page:currentPage, totalPages,
+    }))
+  }, [activeBook, currentPage, totalPages])
+
+  // Load which PDFs exist in IndexedDB on mount
+  useEffect(() => {
+    books.forEach(async b => {
+      const buf = await loadPdf(b.id)
+      if (buf) setPdfMap(m => { const n = new Map(m); n.set(b.id, buf); return n })
+    })
+  }, [])
+
+  // ── Toast ──────────────────────────────────────────────────
+  const showToast = (kind: ToastKind, msg: string, ttl = 3500) => {
+    setToast({ kind, msg })
+    if (toastRef.current) clearTimeout(toastRef.current)
+    if (ttl > 0) toastRef.current = setTimeout(() => setToast(null), ttl)
+  }
+
+  // ── Upload ─────────────────────────────────────────────────
+  const handleFile = useCallback(async (file: File) => {
+    if (!file) return
+    if (file.type !== 'application/pdf') { showToast('error', 'Please upload a PDF file'); return }
+
+    showToast('loading', `Reading ${file.name}…`, 0)
+
+    try {
+      const buf = await file.arrayBuffer()
+
+      // Count pages
+      const lib = await ensurePdfjs()
+      const pdf = await lib.getDocument({ data: buf.slice(0) }).promise
+      const numPages: number = pdf.numPages
+
+      // Parse name
+      const raw   = file.name.replace(/\.pdf$/i,'').replace(/_/g,' ')
+      const parts = raw.split(/\s*[-–]\s*/)
+      const title  = parts[0]?.trim() || raw
+      const author = parts[1]?.trim() || 'Unknown author'
+
+      const id = Date.now().toString()
+      const book: Book = {
+        id, title, author, totalPages: numPages, currentPage: 1,
+        coverGradient: GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)],
+        addedAt: Date.now(),
+      }
+
+      // Save to IndexedDB
+      await savePdf(id, buf)
+      setPdfMap(m => { const n = new Map(m); n.set(id, buf); return n })
+      setBooks(prev => [...prev, book])
+
+      if (toastRef.current) clearTimeout(toastRef.current)
+      showToast('success', `"${title}" added — ${numPages} pages`)
+    } catch (e) {
+      console.error(e)
+      showToast('error', 'Could not read this PDF. Try another file.')
+    }
+  }, [])
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false)
+    const f = e.dataTransfer.files[0]; if (f) handleFile(f)
+  }
+
+  // ── Open book ──────────────────────────────────────────────
+  const openBook = async (book: Book) => {
+    let buf = pdfMap.get(book.id) ?? await loadPdf(book.id)
+    if (!buf) { showToast('error', 'PDF not found — please re-upload this book'); return }
+    if (!pdfMap.has(book.id)) setPdfMap(m => { const n = new Map(m); n.set(book.id, buf!); return n })
+    setActiveBook(book); setActiveBuf(buf)
+    setCurrentPage(book.currentPage || 1)
+    setSessionStart(book.currentPage || 1)
+    setTotalPages(book.totalPages || 1)
+    setView('reader'); setShowNotes(false)
+  }
+
+  const updatePage = (p: number) => {
+    if (!activeBook) return
+    const c = Math.max(1, Math.min(p, totalPages)); setCurrentPage(c)
+    setBooks(prev => prev.map(b => b.id === activeBook.id ? {...b, currentPage:c, totalPages} : b))
+  }
+
+  const finishSession = async () => {
+    if (!activeBook) return
+    setRecapLoading(true)
+    const r = await generateRecap(activeBook, sessionStart, currentPage)
+    setRecap(r); setRecapLoading(false); setView('recap')
+  }
+
+  const deleteBook = async (id: string) => {
+    setBooks(prev => prev.filter(b => b.id !== id))
+    setPdfMap(m => { const n = new Map(m); n.delete(id); return n })
+    saveNotes(loadNotes().filter(n => n.bookId !== id))
+    await deletePdf(id)
+    if (activeBook?.id === id) { setView('shelf'); setActiveBook(null); setActiveBuf(null) }
+  }
+
+  const filtered = books.filter(b => {
+    if (!b.totalPages) return filter === 'all'
+    const p = b.currentPage / b.totalPages
+    if (filter === 'progress') return p > 0 && p < 1
+    if (filter === 'finished') return p >= 1
+    return true
+  })
+
+  const pct = totalPages > 0 ? Math.round(currentPage / totalPages * 100) : 0
+
+  return (
+    <>
+      {toast && <Toast kind={toast.kind} msg={toast.msg} />}
+
+      {/* ── Shelf ── */}
+      <div style={{ padding:'36px 40px 140px', maxWidth:1280, margin:'0 auto', minHeight:'100vh' }}>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:32, letterSpacing:'-1px', color:'var(--text-1)', lineHeight:1.1, marginBottom:6 }}>My library</div>
+        <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:20 }}>
+          {books.length} book{books.length!==1?'s':''}
+          {books.filter(b => b.currentPage>1 && b.totalPages>1 && b.currentPage<b.totalPages).length > 0
+            ? ` · ${books.filter(b=>b.currentPage>1&&b.currentPage<b.totalPages).length} in progress` : ''}
+        </div>
+
+        <div style={{ display:'flex', gap:6, marginBottom:24 }}>
+          <button style={tabStyle(filter==='all')}      onClick={()=>setFilter('all')}>All</button>
+          <button style={tabStyle(filter==='progress')} onClick={()=>setFilter('progress')}>In progress</button>
+          <button style={tabStyle(filter==='finished')} onClick={()=>setFilter('finished')}>Finished</button>
+        </div>
+
+        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)}
+          onDrop={onDrop} onClick={()=>fileRef.current?.click()}
+          style={{ border:`1.5px dashed ${dragging?'var(--accent)':'var(--border)'}`, borderRadius:20, padding:'28px 32px', textAlign:'center', cursor:'pointer', background:dragging?'var(--accent-soft)':'var(--bg-card)', transition:'all .2s', marginBottom:28 }}>
+          <div style={{ width:44, height:44, borderRadius:12, background:'var(--accent-soft)', border:'1px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/>
+              <line x1="18" y1="7" x2="18" y2="13"/><line x1="15" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div style={{ fontSize:14, fontWeight:500, color:'var(--text-1)', marginBottom:4 }}>Add a book</div>
+          <div style={{ fontSize:12, color:'var(--text-3)', fontWeight:300 }}>Drop any PDF here — no size limit</div>
+          <input ref={fileRef} type="file" accept=".pdf" style={{ display:'none' }}
+            onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f);e.target.value=''}}/>
+        </div>
+
+        {filtered.length === 0 && (
+          <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', padding:'40px 0' }}>
+            {filter==='all'?'No books yet — add one above.':'Nothing here yet.'}
+          </p>
         )}
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))', gap:16 }}>
+          {filtered.map(book => (
+            <div key={book.id} style={{ position:'relative' }}>
+              <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)}/>
+              <button onClick={()=>deleteBook(book.id)}
+                style={{ position:'absolute', top:8, left:8, width:24, height:24, borderRadius:'50%', background:'rgba(0,0,0,.3)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'opacity .2s' }}
+                onMouseEnter={e=>(e.currentTarget.style.opacity='1')} onMouseLeave={e=>(e.currentTarget.style.opacity='0')}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Preview */}
-      {selected?.preview && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <div className="card-title">Preview</div>
-          <div style={{ fontSize: 14, color: '#8888aa', lineHeight: 1.8, maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-            {selected.preview}
+      {/* ── Reader ── */}
+      {view==='reader' && activeBook && activeBuf && (
+        <div style={{ position:'fixed', inset:0, background:'var(--bg)', zIndex:50, display:'flex', flexDirection:'column' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 24px', borderBottom:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(12px)', flexShrink:0 }}>
+            <button onClick={()=>{setView('shelf');setShowNotes(false)}}
+              style={{ width:34, height:34, borderRadius:'50%', border:'0.5px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div style={{ flex:1, fontSize:14, fontWeight:500, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              {activeBook.title} <span style={{ color:'var(--text-3)', fontWeight:300 }}>— {activeBook.author}</span>
+            </div>
+            <button onClick={()=>setShowNotes(n=>!n)}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, border:'0.5px solid var(--border)', background:showNotes?'var(--accent-soft)':'var(--bg-card)', color:showNotes?'var(--accent)':'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Notes
+            </button>
+            <div style={{ fontSize:12, color:'var(--text-3)', flexShrink:0 }}>p.{currentPage} of {totalPages}</div>
+          </div>
+
+          <div style={{ flex:1, overflow:'auto', padding:'32px 48px', position:'relative', display:'flex', justifyContent:'center' }}>
+            <PdfPage buf={activeBuf} pageNum={currentPage}
+              onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+            {showNotes && <NotesPanel book={activeBook} currentPage={currentPage} onClose={()=>setShowNotes(false)}/>}
+          </div>
+
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderTop:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(12px)', flexShrink:0 }}>
+            <button onClick={()=>updatePage(currentPage-1)} disabled={currentPage<=1} style={rdrBtn(currentPage<=1)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Previous
+            </button>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+              <div style={{ height:3, width:180, background:'var(--text-4)', borderRadius:99, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .5s ease' }}/>
+              </div>
+              <span style={{ fontSize:10, color:'var(--text-3)' }}>{pct}% complete</span>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={()=>updatePage(currentPage+1)} disabled={currentPage>=totalPages} style={rdrBtn(currentPage>=totalPages)}>
+                Next
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button onClick={finishSession} disabled={recapLoading}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:999, background:'linear-gradient(135deg,var(--accent),#7b6cf6)', border:'none', fontSize:12, color:'white', cursor:recapLoading?'default':'pointer', fontFamily:'var(--font-body)', boxShadow:'0 3px 14px var(--accent-glow)', opacity:recapLoading?0.6:1 }}>
+                {recapLoading?'Generating…':'Finish session'}
+                {!recapLoading&&<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* ── Recap ── */}
+      {view==='recap' && recap && (
+        <RecapCard recap={recap}
+          onClose={()=>{setRecap(null);setView('shelf');setActiveBook(null);setActiveBuf(null)}}
+          onAsk={q=>{setMaterial({book:activeBook,recap,question:q});setPage('chat')}}/>
+      )}
+    </>
   )
 }
