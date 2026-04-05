@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Message {
@@ -41,32 +42,36 @@ async function sendToAI(
 ) {
   try {
     const profile = loadProfile()
-    const model   = AI_MODELS[profile.ai ?? 'claude'] ?? 'claude-sonnet-4-20250514'
+    const model = AI_MODELS[profile.ai ?? 'claude'] ?? 'claude-sonnet-4-20250514'
+    const userName = profile.name || 'Student'
+    const personalityMap: Record<string, string> = {
+      claude: 'friendly',
+      gpt4: 'strict',
+      gemini: 'calm',
+      llama: 'hype',
+    }
+    const personality = personalityMap[profile.ai ?? 'claude'] ?? 'friendly'
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model,
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
+        message: messages[messages.length - 1]?.content || '',
+        personality,
+        user_name: userName,
+        material_context: `${systemPrompt}\n\nPreferred model hint: ${model}`,
       }),
     })
 
     const data = await res.json()
 
-    if (data.error) {
-      const msg = data.error.message ?? 'Unknown API error'
-      if (msg.includes('credit') || msg.includes('billing') || msg.includes('quota')) {
-        onError('You\'ve reached your API usage limit. Check your Anthropic billing at console.anthropic.com.')
-      } else {
-        onError(`API error: ${msg}`)
-      }
+    if (!res.ok) {
+      const msg = data?.detail || data?.error?.message || 'Unknown API error'
+      onError(`API error: ${msg}`)
       return
     }
 
-    const text = (data.content ?? []).map((c: any) => c.text ?? '').join('')
+    const text = data?.reply || ''
     // Simulate streaming by chunking
     const words = text.split(' ')
     for (let i = 0; i < words.length; i++) {

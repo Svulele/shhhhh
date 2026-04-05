@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Page } from '../App'
+import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book {
@@ -203,16 +204,19 @@ function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: n
 // ── AI recap ──────────────────────────────────────────────────
 async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
-        messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON — no markdown:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }]
+        message: `The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON and no markdown in this exact shape: {"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}`,
+        personality: 'calm',
+        user_name: 'Student',
+        material_context: 'Create concise recap bullets and study questions from reading progress.'
       })
     })
     const data = await res.json()
-    if (data.error) throw new Error(data.error.message)
-    const text = (data.content ?? []).map((c:any) => c.text ?? '').join('')
+    if (!res.ok) throw new Error(data?.detail || 'Recap request failed')
+    const text = data?.reply || ''
     const p = JSON.parse(text.replace(/```json|```/g,'').trim())
     return { bookId:book.id, fromPage, toPage, summary:p.summary, questions:p.questions }
   } catch {
