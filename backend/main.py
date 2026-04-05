@@ -10,16 +10,18 @@ default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-extra_origins = [
-    origin.strip()
-    for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
-    if origin.strip()
-]
+extra_origins = []
+for origin in os.getenv("FRONTEND_ORIGINS", "").split(","):
+    clean = origin.strip().rstrip("/")
+    if clean:
+        extra_origins.append(clean)
+
 allowed_origins = list(dict.fromkeys(default_origins + extra_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
