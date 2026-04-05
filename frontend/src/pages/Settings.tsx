@@ -2,10 +2,16 @@ import { useState, useEffect } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Profile {
-  name: string; ai: string; goals: string[]
-  location: string; lat: number|null; lon: number|null
-  onboarded: boolean
+  name: string; ai: string; goals: string[]; vibe: string
+  location: string; lat: number|null; lon: number|null; onboarded: boolean
 }
+
+const VIBES = [
+  { id:'gentle',   emoji:'🌱', label:'Gentle',   desc:'Patient, warm, never judges.' },
+  { id:'balanced', emoji:'⚡', label:'Balanced',  desc:'Supportive but keeps you on track.' },
+  { id:'strict',   emoji:'🎯', label:'Strict',    desc:'Direct, focused, no fluff.' },
+  { id:'chill',    emoji:'🌊', label:'Chill',     desc:'Relaxed, pressure-free buddy.' },
+]
 
 const AI_OPTIONS = [
   { id:'claude', label:'Claude',  sub:'by Anthropic' },
@@ -18,8 +24,8 @@ const GOAL_OPTIONS = ['Exams','Research','Personal growth','Language','Coding','
 
 // ── Storage helpers ───────────────────────────────────────────
 const loadProfile = (): Profile => {
-  try { return { name:'', ai:'claude', goals:[], location:'', lat:null, lon:null, onboarded:false, ...JSON.parse(localStorage.getItem('shh_profile')??'{}') } }
-  catch { return { name:'', ai:'claude', goals:[], location:'', lat:null, lon:null, onboarded:false } }
+  try { return { name:'', ai:'claude', vibe:'balanced', goals:[], location:'', lat:null, lon:null, onboarded:false, ...JSON.parse(localStorage.getItem('shh_profile')??'{}') } }
+  catch { return { name:'', ai:'claude', vibe:'balanced', goals:[], location:'', lat:null, lon:null, onboarded:false } }
 }
 const saveProfile = (p: Profile) => localStorage.setItem('shh_profile', JSON.stringify(p))
 
@@ -128,9 +134,9 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ padding:'36px 40px 140px', maxWidth:720, margin:'0 auto' }}>
+    <div style={{ padding:'36px clamp(20px,4vw,56px) 140px', maxWidth:1400, margin:'0 auto', width:'100%' }}>
 
-      {/* Header */}
+      {/* Header — left aligned */}
       <div style={{ marginBottom:36 }}>
         <div style={{ fontFamily:'var(--font-display)', fontSize:32, letterSpacing:'-1px', color:'var(--text-1)', lineHeight:1.1, marginBottom:6 }}>My profile</div>
         <div style={{ fontSize:12, color:'var(--text-3)' }}>Everything stays on your device</div>
@@ -204,6 +210,25 @@ export default function Settings() {
               }}>
               <span style={{ fontSize:14, fontWeight:500, color:'var(--text-1)' }}>{opt.label}</span>
               <span style={{ fontSize:11, color:'var(--text-3)', fontWeight:300 }}>{opt.sub}</span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* Study buddy vibe */}
+      <Section title="Study buddy personality">
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:10 }}>
+          {VIBES.map(v => (
+            <button key={v.id} onClick={()=>update({vibe:v.id})}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s', textAlign:'left',
+                background:(profile as any).vibe===v.id?'var(--accent-soft)':'var(--bg-card)',
+                border:`0.5px solid ${(profile as any).vibe===v.id?'var(--border-active)':'var(--border)'}`,
+              }}>
+              <span style={{fontSize:22}}>{v.emoji}</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:'var(--text-1)'}}>{v.label}</div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginTop:2}}>{v.desc}</div>
+              </div>
             </button>
           ))}
         </div>
