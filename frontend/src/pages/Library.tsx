@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Page } from '../App'
-import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book {
@@ -139,6 +138,86 @@ function PdfPage({ buf, pageNum, scale = 1.4, onLoad }: {
   )
 }
 
+// ── Ebook reader — extracts text from PDF and renders like Safari Reader ──
+function EbookPage({ buf, pageNum, totalPages, onLoad }: {
+  buf: ArrayBuffer; pageNum: number; totalPages: number; onLoad?: (total: number) => void
+}) {
+  const [text, setText]     = useState<string>('')
+  const [loading, setLoad]  = useState(true)
+  const docRef = useRef<any>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const extract = async () => {
+      setLoad(true)
+      try {
+        const lib = await ensurePdfjs()
+        if (!docRef.current) {
+          docRef.current = await lib.getDocument({ data: buf.slice(0) }).promise
+          if (cancelled) return
+          onLoad?.(docRef.current.numPages)
+        }
+        const pg   = await docRef.current.getPage(Math.max(1, Math.min(pageNum, docRef.current.numPages)))
+        if (cancelled) return
+        const content = await pg.getTextContent()
+        if (cancelled) return
+        // Build readable text — group by Y position to form paragraphs
+        const lines: string[] = []
+        let lastY = -1
+        let line  = ''
+        content.items.forEach((item: any) => {
+          const y = Math.round(item.transform?.[5] ?? 0)
+          if (lastY !== -1 && Math.abs(y - lastY) > 5) {
+            if (line.trim()) lines.push(line.trim())
+            line = ''
+          }
+          line  += (line ? ' ' : '') + (item.str ?? '')
+          lastY  = y
+        })
+        if (line.trim()) lines.push(line.trim())
+        setText(lines.join('\n'))
+      } catch (e: any) { if (!cancelled) setText('Could not extract text from this page.') }
+      if (!cancelled) setLoad(false)
+    }
+    extract()
+    return () => { cancelled = true }
+  }, [buf, pageNum])
+
+  if (loading) return (
+    <div style={{ maxWidth:680, margin:'0 auto', padding:'60px 48px', textAlign:'center', color:'var(--text-3)', fontSize:13 }}>
+      Extracting text…
+    </div>
+  )
+
+  const paragraphs = text.split('\n').filter(l => l.trim().length > 0)
+
+  return (
+    <div style={{ maxWidth:680, margin:'0 auto', padding:'48px clamp(24px,5vw,80px) 48px', width:'100%' }}>
+      {/* Page label */}
+      <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:32, textAlign:'center' }}>
+        Page {pageNum} of {totalPages}
+      </div>
+
+      {/* Text content — beautiful typography like Safari Reader */}
+      <div style={{ fontFamily:"'Georgia', var(--font-display), serif", fontSize:'clamp(16px,1.8vw,19px)', lineHeight:1.85, color:'var(--text-1)', fontWeight:400 }}>
+        {paragraphs.map((p, i) => {
+          // Detect headings: short lines in caps or ends without period
+          const isHeading = p.length < 80 && (p === p.toUpperCase() || (!p.endsWith('.') && !p.endsWith(',') && p.length < 60))
+          return isHeading
+            ? <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(18px,2vw,22px)', fontWeight:400, letterSpacing:'-0.3px', color:'var(--text-1)', margin:'2em 0 0.6em', lineHeight:1.3 }}>{p}</h2>
+            : <p key={i} style={{ marginBottom:'1.2em', textAlign:'justify' }}>{p}</p>
+        })}
+      </div>
+
+      {paragraphs.length === 0 && (
+        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:14, paddingTop:40 }}>
+          No readable text found on this page. Try PDF view instead.
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Toast ─────────────────────────────────────────────────────
 function Toast({ kind, msg }: { kind: ToastKind; msg: string }) {
   const C = {
@@ -204,19 +283,16 @@ function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: n
 // ── AI recap ──────────────────────────────────────────────────
 async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        message: `The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON and no markdown in this exact shape: {"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}`,
-        personality: 'calm',
-        user_name: 'Student',
-        material_context: 'Create concise recap bullets and study questions from reading progress.'
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON — no markdown:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }]
       })
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data?.detail || 'Recap request failed')
-    const text = data?.reply || ''
+    if (data.error) throw new Error(data.error.message)
+    const text = (data.content ?? []).map((c:any) => c.text ?? '').join('')
     const p = JSON.parse(text.replace(/```json|```/g,'').trim())
     return { bookId:book.id, fromPage, toPage, summary:p.summary, questions:p.questions }
   } catch {
@@ -226,27 +302,71 @@ async function generateRecap(book: Book, fromPage: number, toPage: number): Prom
   }
 }
 
-// ── Book card ─────────────────────────────────────────────────
-function BookCard({ book, hasPdf, onClick }: { book: Book; hasPdf: boolean; onClick: () => void }) {
+// ── Book card with three-dot menu ────────────────────────────
+function BookCard({ book, hasPdf, onClick, onDelete }: { book: Book; hasPdf: boolean; onClick: () => void; onDelete: () => void }) {
   const pct  = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0
   const done = pct >= 100
-  const [hov, setHov] = useState(false)
+  const [hov, setHov]     = useState(false)
+  const [menu, setMenu]   = useState(false)
+  const menuRef           = useRef<HTMLDivElement>(null)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menu) return
+    const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menu])
+
   return (
-    <button onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, overflow:'hidden', cursor:'pointer', textAlign:'left', width:'100%', transition:'all .22s', transform:hov?'translateY(-3px)':'none', boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none' }}>
-      <div style={{ height:110, background:book.coverGradient, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 19V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/></svg>
-        <span style={{ position:'absolute', top:10, right:10, background:'rgba(0,0,0,.25)', borderRadius:6, padding:'3px 7px', fontSize:10, color:'rgba(255,255,255,.9)', fontWeight:500 }}>{pct}%</span>
-        {!hasPdf && <span style={{ position:'absolute', bottom:8, left:8, background:'rgba(0,0,0,.4)', borderRadius:6, padding:'2px 6px', fontSize:9, color:'rgba(255,255,255,.7)' }}>re-upload needed</span>}
-      </div>
-      <div style={{ padding:'12px 14px 14px' }}>
-        <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{book.title}</div>
-        <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:10, fontWeight:300 }}>{book.author}</div>
-        <div style={{ height:3, background:'var(--text-4)', borderRadius:99, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${pct}%`, background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .8s ease' }}/>
+    <div style={{ position:'relative' }} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+      <button onClick={onClick}
+        style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, overflow:'hidden', cursor:'pointer', textAlign:'left', width:'100%', transition:'all .22s', transform:hov?'translateY(-3px)':'none', boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none' }}>
+        <div style={{ height:110, background:book.coverGradient, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 19V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/></svg>
+          <span style={{ position:'absolute', top:10, right:10, background:'rgba(0,0,0,.25)', borderRadius:6, padding:'3px 7px', fontSize:10, color:'rgba(255,255,255,.9)', fontWeight:500 }}>{pct}%</span>
+          {!hasPdf && <span style={{ position:'absolute', bottom:8, left:8, background:'rgba(0,0,0,.4)', borderRadius:6, padding:'2px 6px', fontSize:9, color:'rgba(255,255,255,.7)' }}>re-upload needed</span>}
         </div>
+        <div style={{ padding:'12px 14px 14px' }}>
+          <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{book.title}</div>
+          <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:10, fontWeight:300 }}>{book.author}</div>
+          <div style={{ height:3, background:'var(--text-4)', borderRadius:99, overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${pct}%`, background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .8s ease' }}/>
+          </div>
+        </div>
+      </button>
+
+      {/* Three-dot menu — appears on hover */}
+      <div ref={menuRef} style={{ position:'absolute', top:8, right:8, zIndex:10 }}>
+        <button
+          onClick={e => { e.stopPropagation(); setMenu(m => !m) }}
+          style={{
+            width:26, height:26, borderRadius:'50%',
+            background: menu ? 'rgba(0,0,0,.45)' : hov ? 'rgba(0,0,0,.3)' : 'transparent',
+            border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+            opacity: hov||menu ? 1 : 0, transition:'all .18s', color:'white',
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+        </button>
+        {menu && (
+          <div style={{ position:'absolute', top:30, right:0, background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:12, padding:'4px', minWidth:140, boxShadow:'0 8px 24px rgba(0,0,0,.2)', backdropFilter:'blur(16px)', zIndex:20 }}>
+            <button onClick={e=>{ e.stopPropagation(); setMenu(false); onClick() }}
+              style={{ width:'100%', padding:'9px 14px', borderRadius:8, background:'transparent', border:'none', textAlign:'left', fontSize:13, color:'var(--text-1)', cursor:'pointer', fontFamily:'var(--font-body)', display:'flex', alignItems:'center', gap:8, transition:'background .15s' }}
+              onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              Open
+            </button>
+            <button onClick={e=>{ e.stopPropagation(); setMenu(false); onDelete() }}
+              style={{ width:'100%', padding:'9px 14px', borderRadius:8, background:'transparent', border:'none', textAlign:'left', fontSize:13, color:'#f87171', cursor:'pointer', fontFamily:'var(--font-body)', display:'flex', alignItems:'center', gap:8, transition:'background .15s' }}
+              onMouseEnter={e=>(e.currentTarget.style.background='rgba(239,68,68,.08)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Delete
+            </button>
+          </div>
+        )}
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -311,6 +431,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
   const [totalPages, setTotalPages]     = useState(1)
   const [sessionStart, setSessionStart] = useState(1)
   const [showNotes, setShowNotes]       = useState(false)
+  const [readerMode, setReaderMode]     = useState<'pdf'|'ebook'>('pdf')
   const [recap, setRecap]               = useState<RecapData|null>(null)
   const [recapLoading, setRecapLoading] = useState(false)
   const [dragging, setDragging]         = useState(false)
@@ -437,7 +558,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
       {toast && <Toast kind={toast.kind} msg={toast.msg} />}
 
       {/* ── Shelf ── */}
-      <div style={{ padding:'36px 40px 140px', maxWidth:1280, margin:'0 auto', minHeight:'100vh' }}>
+      <div style={{ padding:'36px clamp(20px,4vw,56px) 140px', maxWidth:1400, margin:'0 auto', width:'100%' }}>
         <div style={{ fontFamily:'var(--font-display)', fontSize:32, letterSpacing:'-1px', color:'var(--text-1)', lineHeight:1.1, marginBottom:6 }}>My library</div>
         <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:20 }}>
           {books.length} book{books.length!==1?'s':''}
@@ -474,13 +595,8 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))', gap:16 }}>
           {filtered.map(book => (
-            <div key={book.id} style={{ position:'relative' }}>
-              <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)}/>
-              <button onClick={()=>deleteBook(book.id)}
-                style={{ position:'absolute', top:8, left:8, width:24, height:24, borderRadius:'50%', background:'rgba(0,0,0,.3)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'opacity .2s' }}
-                onMouseEnter={e=>(e.currentTarget.style.opacity='1')} onMouseLeave={e=>(e.currentTarget.style.opacity='0')}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+            <div key={book.id}>
+              <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)}/>
             </div>
           ))}
         </div>
@@ -497,6 +613,12 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             <div style={{ flex:1, fontSize:14, fontWeight:500, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
               {activeBook.title} <span style={{ color:'var(--text-3)', fontWeight:300 }}>— {activeBook.author}</span>
             </div>
+            {/* Ebook / PDF view toggle */}
+            <button onClick={()=>setReaderMode(m => m==='pdf'?'ebook':'pdf')}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, border:'0.5px solid var(--border)', background:readerMode==='ebook'?'var(--accent-soft)':'var(--bg-card)', color:readerMode==='ebook'?'var(--accent)':'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s', flexShrink:0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              {readerMode==='ebook' ? 'PDF view' : 'Reader view'}
+            </button>
             <button onClick={()=>setShowNotes(n=>!n)}
               style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, border:'0.5px solid var(--border)', background:showNotes?'var(--accent-soft)':'var(--bg-card)', color:showNotes?'var(--accent)':'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -505,9 +627,13 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             <div style={{ fontSize:12, color:'var(--text-3)', flexShrink:0 }}>p.{currentPage} of {totalPages}</div>
           </div>
 
-          <div style={{ flex:1, overflow:'auto', padding:'32px 48px', position:'relative', display:'flex', justifyContent:'center' }}>
-            <PdfPage buf={activeBuf} pageNum={currentPage}
-              onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+          <div style={{ flex:1, overflow:'auto', padding: readerMode==='ebook' ? '0' : '32px 48px', position:'relative', display:'flex', justifyContent:'center', background: readerMode==='ebook' ? 'var(--bg)' : 'var(--bg)' }}>
+            {readerMode === 'ebook'
+              ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
+                  onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+              : <PdfPage buf={activeBuf} pageNum={currentPage}
+                  onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+            }
             {showNotes && <NotesPanel book={activeBook} currentPage={currentPage} onClose={()=>setShowNotes(false)}/>}
           </div>
 

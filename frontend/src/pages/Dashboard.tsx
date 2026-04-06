@@ -8,7 +8,7 @@ interface Profile {
   location: string; lat: number|null; lon: number|null; onboarded: boolean
 }
 
-// ── Quotes ────────────────────────────────────────────────────
+// ── Quotes — 30 rotating, changes daily ──────────────────────
 const QUOTES = [
   { text:'The more that you read, the more things you will know.', author:'Dr. Seuss' },
   { text:'An investment in knowledge pays the best interest.', author:'Benjamin Franklin' },
@@ -17,6 +17,29 @@ const QUOTES = [
   { text:'Education is not preparation for life; education is life itself.', author:'John Dewey' },
   { text:'The capacity to learn is a gift; the ability to learn is a skill.', author:'Brian Herbert' },
   { text:'Develop a passion for learning. If you do, you will never cease to grow.', author:"Anthony J. D'Angelo" },
+  { text:'Tell me and I forget. Teach me and I remember. Involve me and I learn.', author:'Benjamin Franklin' },
+  { text:'The expert in anything was once a beginner.', author:'Helen Hayes' },
+  { text:'Education is the passport to the future.', author:'Malcolm X' },
+  { text:'The mind is not a vessel to be filled but a fire to be kindled.', author:'Plutarch' },
+  { text:'Learning never exhausts the mind.', author:'Leonardo da Vinci' },
+  { text:'The roots of education are bitter, but the fruit is sweet.', author:'Aristotle' },
+  { text:'Strive for progress, not perfection.', author:'Unknown' },
+  { text:'Small steps every day lead to massive results.', author:'Unknown' },
+  { text:'You don\'t have to be great to start, but you have to start to be great.', author:'Zig Ziglar' },
+  { text:'Success is the sum of small efforts repeated day in and day out.', author:'Robert Collier' },
+  { text:'It always seems impossible until it\'s done.', author:'Nelson Mandela' },
+  { text:'Don\'t watch the clock; do what it does — keep going.', author:'Sam Levenson' },
+  { text:'The secret of getting ahead is getting started.', author:'Mark Twain' },
+  { text:'Push yourself because no one else is going to do it for you.', author:'Unknown' },
+  { text:'Great things never came from comfort zones.', author:'Unknown' },
+  { text:'Dream it. Wish it. Do it.', author:'Unknown' },
+  { text:'Work hard in silence, let your success be your noise.', author:'Frank Ocean' },
+  { text:'You are capable of more than you know.', author:'E.O. Wilson' },
+  { text:'Believe you can and you\'re halfway there.', author:'Theodore Roosevelt' },
+  { text:'Every accomplishment starts with the decision to try.', author:'John F. Kennedy' },
+  { text:'Don\'t stop until you\'re proud.', author:'Unknown' },
+  { text:'Hardships often prepare ordinary people for an extraordinary destiny.', author:'C.S. Lewis' },
+  { text:'The only way to do great work is to love what you do.', author:'Steve Jobs' },
 ]
 
 const AI_OPTIONS = [
@@ -197,12 +220,81 @@ function playBell() {
   } catch {}
 }
 
-// Ambient sounds
-const AMBIENT_SRCS: Record<string, string> = {
-  rain:   'https://cdn.pixabay.com/audio/2022/05/13/audio_257112ef96.mp3',
-  forest: 'https://cdn.pixabay.com/audio/2022/03/24/audio_1e91a8dcca.mp3',
-  white:  'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1bab.mp3',
-  cafe:   'https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
+// ── Ambient sounds via Web Audio API — no external files, no CORS ──
+type AmbientKey = 'rain' | 'forest' | 'white' | 'cafe'
+
+let ambientCtx: AudioContext | null = null
+let ambientNodes: AudioNode[] = []
+
+function stopAmbient() {
+  ambientNodes.forEach(n => { try { (n as any).stop?.(); n.disconnect() } catch {} })
+  ambientNodes = []
+}
+
+function startAmbient(type: AmbientKey) {
+  stopAmbient()
+  try {
+    if (!ambientCtx) ambientCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const ctx = ambientCtx
+
+    const makeNoise = (buf: AudioBuffer, gain: number, loop = true) => {
+      const src = ctx.createBufferSource()
+      src.buffer = buf; src.loop = loop
+      const g = ctx.createGain(); g.gain.value = gain
+      src.connect(g); g.connect(ctx.destination)
+      src.start(); ambientNodes.push(src, g)
+    }
+
+    const makeFilter = (type: BiquadFilterType, freq: number, gain = 0) => {
+      const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.gain.value = gain; return f
+    }
+
+    // Fill buffer with white noise
+    const noiseLen = ctx.sampleRate * 2
+    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate)
+    const data = noiseBuf.getChannelData(0)
+    for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1
+
+    if (type === 'white') {
+      makeNoise(noiseBuf, 0.08)
+    }
+    if (type === 'rain') {
+      // High-pass filtered noise = rain
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true
+      const hp  = makeFilter('highpass', 1200)
+      const lp  = makeFilter('lowpass', 8000)
+      const g   = ctx.createGain(); g.gain.value = 0.18
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(ctx.destination)
+      src.start(); ambientNodes.push(src, hp, lp, g)
+      // Add rumble
+      const src2 = ctx.createBufferSource(); src2.buffer = noiseBuf; src2.loop = true
+      const hp2  = makeFilter('lowpass', 300)
+      const g2   = ctx.createGain(); g2.gain.value = 0.04
+      src2.connect(hp2); hp2.connect(g2); g2.connect(ctx.destination)
+      src2.start(); ambientNodes.push(src2, hp2, g2)
+    }
+    if (type === 'forest') {
+      // Low filtered noise = gentle wind
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true
+      const bp  = makeFilter('bandpass', 400)
+      const g   = ctx.createGain(); g.gain.value = 0.06
+      // LFO for breathing effect
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.3
+      const lfoG = ctx.createGain(); lfoG.gain.value = 0.04
+      lfo.connect(lfoG); lfoG.connect(g.gain)
+      src.connect(bp); bp.connect(g); g.connect(ctx.destination)
+      src.start(); lfo.start(); ambientNodes.push(src, bp, g, lfo, lfoG)
+    }
+    if (type === 'cafe') {
+      // Mid-range filtered noise = cafe murmur
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true
+      const bp  = makeFilter('bandpass', 800)
+      const lp  = makeFilter('lowpass', 2000)
+      const g   = ctx.createGain(); g.gain.value = 0.07
+      src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(ctx.destination)
+      src.start(); ambientNodes.push(src, bp, lp, g)
+    }
+  } catch (e) { console.warn('Ambient audio:', e) }
 }
 
 function PomodoroWidget() {
@@ -219,7 +311,6 @@ function PomodoroWidget() {
   const [aiLoading, setAiLoading]   = useState(false)
 
   const ivRef    = useRef<ReturnType<typeof setInterval>|null>(null)
-  const audioRef = useRef<HTMLAudioElement|null>(null)
 
   const total = mode==='work' ? workSecs : brkSecs
 
@@ -243,15 +334,11 @@ function PomodoroWidget() {
     return () => { if (ivRef.current) clearInterval(ivRef.current) }
   }, [running, mode, workSecs, brkSecs])
 
-  // Ambient audio
+  // Ambient audio via Web Audio API
   useEffect(() => {
-    audioRef.current?.pause(); audioRef.current = null
-    if (sound && AMBIENT_SRCS[sound]) {
-      const a = new Audio(AMBIENT_SRCS[sound])
-      a.loop = true; a.volume = 0.28; a.play().catch(()=>{})
-      audioRef.current = a
-    }
-    return () => audioRef.current?.pause()
+    if (sound) startAmbient(sound as AmbientKey)
+    else stopAmbient()
+    return () => stopAmbient()
   }, [sound])
 
   const switchMode = (m: 'work'|'break') => {
@@ -435,7 +522,10 @@ export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
   const [profile, setProfile] = useState<Profile|null>(null)
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
-  const quote   = QUOTES[new Date().getDay() % QUOTES.length]
+  const now     = new Date()
+  // Changes every 4 hours, 30 quotes = good variety
+  const qIdx    = Math.floor((now.getDate() * 6 + Math.floor(now.getHours() / 4)) % QUOTES.length)
+  const quote   = QUOTES[qIdx]
   const streak  = Number(localStorage.getItem('shh_streak') ?? 12)
   const session = (() => { try { return JSON.parse(localStorage.getItem('shh_session')?? 'null') } catch { return null } })()
 
@@ -535,7 +625,7 @@ export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
 
           {/* ── Right col ── */}
           <div className="home-col" style={{paddingTop:4}}>
-            <PomodoroWidget />
+            <PomodoroWidget/>
             <div className="stat-grid">
               <div className="stat-card">
                 <div className="stat-lbl">Today</div>
