@@ -138,18 +138,18 @@ function PdfPage({ buf, pageNum, scale = 1.4, onLoad }: {
   )
 }
 
-// ── Ebook reader — extracts text from PDF and renders like Safari Reader ──
+// ── Ebook reader — Safari Reader style ─────────────────────
 function EbookPage({ buf, pageNum, totalPages, onLoad }: {
   buf: ArrayBuffer; pageNum: number; totalPages: number; onLoad?: (total: number) => void
 }) {
-  const [text, setText]     = useState<string>('')
-  const [loading, setLoad]  = useState(true)
+  const [items, setItems] = useState<{text:string; heading:boolean}[]>([])
+  const [loading, setLoading] = useState(true)
   const docRef = useRef<any>(null)
 
   useEffect(() => {
     let cancelled = false
-    const extract = async () => {
-      setLoad(true)
+    setLoading(true)
+    ;(async () => {
       try {
         const lib = await ensurePdfjs()
         if (!docRef.current) {
@@ -157,66 +157,70 @@ function EbookPage({ buf, pageNum, totalPages, onLoad }: {
           if (cancelled) return
           onLoad?.(docRef.current.numPages)
         }
-        const pg   = await docRef.current.getPage(Math.max(1, Math.min(pageNum, docRef.current.numPages)))
+        const pg = await docRef.current.getPage(Math.max(1, Math.min(pageNum, docRef.current.numPages)))
         if (cancelled) return
-        const content = await pg.getTextContent()
+        const ct = await pg.getTextContent()
         if (cancelled) return
-        // Build readable text — group by Y position to form paragraphs
-        const lines: string[] = []
-        let lastY = -1
-        let line  = ''
-        content.items.forEach((item: any) => {
-          const y = Math.round(item.transform?.[5] ?? 0)
-          if (lastY !== -1 && Math.abs(y - lastY) > 5) {
-            if (line.trim()) lines.push(line.trim())
-            line = ''
-          }
-          line  += (line ? ' ' : '') + (item.str ?? '')
-          lastY  = y
+
+        // Group text by Y coordinate into visual lines
+        const lineMap = new Map<number, string[]>()
+        ct.items.forEach((it: any) => {
+          const y = Math.round(it.transform?.[5] ?? 0)
+          if (!lineMap.has(y)) lineMap.set(y, [])
+          if (it.str?.trim()) lineMap.get(y)!.push(it.str)
         })
-        if (line.trim()) lines.push(line.trim())
-        setText(lines.join('\n'))
-      } catch (e: any) { if (!cancelled) setText('Could not extract text from this page.') }
-      if (!cancelled) setLoad(false)
-    }
-    extract()
+
+        const lines = Array.from(lineMap.entries())
+          .sort((a, b) => b[0] - a[0]) // PDF Y is bottom-up
+          .map(([, ws]) => ws.join(' ').trim())
+          .filter(l => l.length > 1)
+
+        // Merge into paragraphs
+        const result: {text:string; heading:boolean}[] = []
+        let buf2 = ''
+        for (const line of lines) {
+          const isAllCaps = line.toUpperCase() === line && line.replace(/[^A-Z]/g,'').length > 2
+          const isShortNoEnd = line.length < 65 && !/[.!?,;:]$/.test(line)
+          if (isAllCaps) {
+            if (buf2.trim()) { result.push({text:buf2.trim(),heading:false}); buf2='' }
+            result.push({text:line,heading:true})
+          } else {
+            buf2 += (buf2 ? ' ' : '') + line
+            if (/[.!?]$/.test(line) || (isShortNoEnd && buf2.length > 80)) {
+              result.push({text:buf2.trim(),heading:false}); buf2=''
+            }
+          }
+        }
+        if (buf2.trim()) result.push({text:buf2.trim(),heading:false})
+
+        if (!cancelled) { setItems(result); setLoading(false) }
+      } catch { if (!cancelled) { setItems([{text:'Could not extract text. Switch to PDF view.',heading:false}]); setLoading(false) } }
+    })()
     return () => { cancelled = true }
   }, [buf, pageNum])
 
-  if (loading) return (
-    <div style={{ maxWidth:680, margin:'0 auto', padding:'60px 48px', textAlign:'center', color:'var(--text-3)', fontSize:13 }}>
-      Extracting text…
-    </div>
-  )
-
-  const paragraphs = text.split('\n').filter(l => l.trim().length > 0)
-
   return (
-    <div style={{ maxWidth:680, margin:'0 auto', padding:'48px clamp(24px,5vw,80px) 48px', width:'100%' }}>
-      {/* Page label */}
-      <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:32, textAlign:'center' }}>
+    <div style={{ width:'100%', maxWidth:700, margin:'0 auto', padding:'40px clamp(20px,5vw,64px) 80px' }}>
+      <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:36, textAlign:'center' }}>
         Page {pageNum} of {totalPages}
       </div>
-
-      {/* Text content — beautiful typography like Safari Reader */}
-      <div style={{ fontFamily:"'Georgia', var(--font-display), serif", fontSize:'clamp(16px,1.8vw,19px)', lineHeight:1.85, color:'var(--text-1)', fontWeight:400 }}>
-        {paragraphs.map((p, i) => {
-          // Detect headings: short lines in caps or ends without period
-          const isHeading = p.length < 80 && (p === p.toUpperCase() || (!p.endsWith('.') && !p.endsWith(',') && p.length < 60))
-          return isHeading
-            ? <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(18px,2vw,22px)', fontWeight:400, letterSpacing:'-0.3px', color:'var(--text-1)', margin:'2em 0 0.6em', lineHeight:1.3 }}>{p}</h2>
-            : <p key={i} style={{ marginBottom:'1.2em', textAlign:'justify' }}>{p}</p>
-        })}
-      </div>
-
-      {paragraphs.length === 0 && (
-        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:14, paddingTop:40 }}>
-          No readable text found on this page. Try PDF view instead.
+      {loading ? (
+        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:13, paddingTop:60 }}>Extracting text…</div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:14, paddingTop:60 }}>No readable text on this page — switch to PDF view.</div>
+      ) : (
+        <div>
+          {items.map((it, i) => it.heading ? (
+            <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(17px,2vw,21px)', fontWeight:500, color:'var(--text-1)', margin:'2.2em 0 0.7em', lineHeight:1.3, letterSpacing:'-0.2px' }}>{it.text}</h2>
+          ) : (
+            <p key={i} style={{ fontFamily:"Georgia, 'Times New Roman', var(--font-display), serif", fontSize:'clamp(16px,1.8vw,18px)', lineHeight:1.95, color:'var(--text-1)', marginBottom:'1em', textAlign:'justify', opacity:0.9 }}>{it.text}</p>
+          ))}
         </div>
       )}
     </div>
   )
 }
+
 
 // ── Toast ─────────────────────────────────────────────────────
 function Toast({ kind, msg }: { kind: ToastKind; msg: string }) {
@@ -557,48 +561,50 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     <>
       {toast && <Toast kind={toast.kind} msg={toast.msg} />}
 
-      {/* ── Shelf ── */}
-      <div style={{ padding:'36px clamp(20px,4vw,56px) 140px', maxWidth:1400, margin:'0 auto', width:'100%' }}>
-        <div style={{ fontFamily:'var(--font-display)', fontSize:32, letterSpacing:'-1px', color:'var(--text-1)', lineHeight:1.1, marginBottom:6 }}>My library</div>
-        <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:20 }}>
-          {books.length} book{books.length!==1?'s':''}
-          {books.filter(b => b.currentPage>1 && b.totalPages>1 && b.currentPage<b.totalPages).length > 0
-            ? ` · ${books.filter(b=>b.currentPage>1&&b.currentPage<b.totalPages).length} in progress` : ''}
-        </div>
-
-        <div style={{ display:'flex', gap:6, marginBottom:24 }}>
-          <button style={tabStyle(filter==='all')}      onClick={()=>setFilter('all')}>All</button>
-          <button style={tabStyle(filter==='progress')} onClick={()=>setFilter('progress')}>In progress</button>
-          <button style={tabStyle(filter==='finished')} onClick={()=>setFilter('finished')}>Finished</button>
-        </div>
-
-        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)}
-          onDrop={onDrop} onClick={()=>fileRef.current?.click()}
-          style={{ border:`1.5px dashed ${dragging?'var(--accent)':'var(--border)'}`, borderRadius:20, padding:'28px 32px', textAlign:'center', cursor:'pointer', background:dragging?'var(--accent-soft)':'var(--bg-card)', transition:'all .2s', marginBottom:28 }}>
-          <div style={{ width:44, height:44, borderRadius:12, background:'var(--accent-soft)', border:'1px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/>
-              <line x1="18" y1="7" x2="18" y2="13"/><line x1="15" y1="10" x2="21" y2="10"/>
-            </svg>
+      {/* ── Shelf — scrollable inside the full-height .main ── */}
+      <div className="page-scroll" style={{ display: view!=='shelf' ? 'none' : undefined }}>
+        <div style={{ padding:'36px clamp(20px,4vw,56px) 140px', maxWidth:1400, margin:'0 auto', width:'100%' }}>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:32, letterSpacing:'-1px', color:'var(--text-1)', lineHeight:1.1, marginBottom:6 }}>My library</div>
+          <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:20 }}>
+            {books.length} book{books.length!==1?'s':''}
+            {books.filter(b => b.currentPage>1 && b.totalPages>1 && b.currentPage<b.totalPages).length > 0
+              ? ` · ${books.filter(b=>b.currentPage>1&&b.currentPage<b.totalPages).length} in progress` : ''}
           </div>
-          <div style={{ fontSize:14, fontWeight:500, color:'var(--text-1)', marginBottom:4 }}>Add a book</div>
-          <div style={{ fontSize:12, color:'var(--text-3)', fontWeight:300 }}>Drop any PDF here — no size limit</div>
-          <input ref={fileRef} type="file" accept=".pdf" style={{ display:'none' }}
-            onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f);e.target.value=''}}/>
-        </div>
 
-        {filtered.length === 0 && (
-          <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', padding:'40px 0' }}>
-            {filter==='all'?'No books yet — add one above.':'Nothing here yet.'}
-          </p>
-        )}
+          <div style={{ display:'flex', gap:6, marginBottom:24 }}>
+            <button style={tabStyle(filter==='all')}      onClick={()=>setFilter('all')}>All</button>
+            <button style={tabStyle(filter==='progress')} onClick={()=>setFilter('progress')}>In progress</button>
+            <button style={tabStyle(filter==='finished')} onClick={()=>setFilter('finished')}>Finished</button>
+          </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))', gap:16 }}>
-          {filtered.map(book => (
-            <div key={book.id}>
-              <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)}/>
+          <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)}
+            onDrop={onDrop} onClick={()=>fileRef.current?.click()}
+            style={{ border:`1.5px dashed ${dragging?'var(--accent)':'var(--border)'}`, borderRadius:20, padding:'28px 32px', textAlign:'center', cursor:'pointer', background:dragging?'var(--accent-soft)':'var(--bg-card)', transition:'all .2s', marginBottom:28 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:'var(--accent-soft)', border:'1px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/>
+                <line x1="18" y1="7" x2="18" y2="13"/><line x1="15" y1="10" x2="21" y2="10"/>
+              </svg>
             </div>
-          ))}
+            <div style={{ fontSize:14, fontWeight:500, color:'var(--text-1)', marginBottom:4 }}>Add a book</div>
+            <div style={{ fontSize:12, color:'var(--text-3)', fontWeight:300 }}>Drop any PDF here — no size limit</div>
+            <input ref={fileRef} type="file" accept=".pdf" style={{ display:'none' }}
+              onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f);e.target.value=''}}/>
+          </div>
+
+          {filtered.length === 0 && (
+            <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', padding:'40px 0' }}>
+              {filter==='all'?'No books yet — add one above.':'Nothing here yet.'}
+            </p>
+          )}
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))', gap:16 }}>
+            {filtered.map(book => (
+              <div key={book.id}>
+                <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)}/>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -627,13 +633,16 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             <div style={{ fontSize:12, color:'var(--text-3)', flexShrink:0 }}>p.{currentPage} of {totalPages}</div>
           </div>
 
-          <div style={{ flex:1, overflow:'auto', padding: readerMode==='ebook' ? '0' : '32px 48px', position:'relative', display:'flex', justifyContent:'center', background: readerMode==='ebook' ? 'var(--bg)' : 'var(--bg)' }}>
-            {readerMode === 'ebook'
-              ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
-                  onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
-              : <PdfPage buf={activeBuf} pageNum={currentPage}
-                  onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
-            }
+          {/* Reader body — scroll container, PDF/ebook centred */}
+          <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', position:'relative', background:'var(--bg)' }}>
+            <div style={{ minHeight:'100%', display:'flex', justifyContent:'center', padding: readerMode==='ebook' ? '0' : '24px clamp(16px,4vw,48px) 80px' }}>
+              {readerMode === 'ebook'
+                ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
+                    onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+                : <PdfPage buf={activeBuf} pageNum={currentPage}
+                    onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+              }
+            </div>
             {showNotes && <NotesPanel book={activeBook} currentPage={currentPage} onClose={()=>setShowNotes(false)}/>}
           </div>
 
