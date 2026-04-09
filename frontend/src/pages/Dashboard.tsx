@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
+import { API_BASE_URL } from '../config'
 
 // ── 30 rotating quotes ────────────────────────────────────────
 const QUOTES = [
@@ -312,13 +313,18 @@ function PomodoroWidget() {
     setAiLoad(true)
     const p = (() => { try { return JSON.parse(localStorage.getItem('shh_profile') ?? '{}') } catch { return {} } })()
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 150,
-          messages: [{ role: 'user', content: `Goals: ${p.goals?.join(', ')||'study'}. Vibe: ${p.vibe||'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}` }] })
+      const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Goals: ${p.goals?.join(', ') || 'study'}. Vibe: ${p.vibe || 'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}`,
+          personality: 'friendly',
+          user_name: p.name || 'Friend',
+        })
       })
       const d = await res.json()
-      const t = (d.content??[]).map((c:any)=>c.text??'').join('')
+      if (!res.ok) throw new Error(d.detail ?? 'Request failed')
+      const t = d.reply ?? ''
       const parsed = JSON.parse(t.replace(/```json|```/g,'').trim())
       setCwMins(parsed.work ?? 25); setCbMins(parsed.break ?? 5); setShowCfg(true)
     } catch {}

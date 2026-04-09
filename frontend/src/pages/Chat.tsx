@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface Message { id:string; role:'user'|'assistant'; content:string; ts:number }
 interface Session  { id:string; title:string; messages:Message[]; createdAt:number; bookCtx?:string }
@@ -29,17 +30,32 @@ You're not just an assistant — you're a companion who genuinely cares about th
 
 async function callAI(msgs:Message[], sys:string, onChunk:(t:string)=>void, onDone:()=>void, onErr:(e:string)=>void) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1024, system:sys, messages:msgs.map(m=>({role:m.role,content:m.content})) })
-    })
-    const data = await res.json()
-    if (data.error) {
-      const msg = data.error.message??''
-      onErr(msg.match(/credit|billing|quota/i) ? 'API usage limit reached. Visit console.anthropic.com to add credits.' : `API error: ${msg}`)
+    const latestUserMessage = [...msgs].reverse().find(m => m.role === 'user')
+    if (!latestUserMessage) {
+      onErr('No message to send.')
       return
     }
-    const text = (data.content??[]).map((c:any)=>c.text??'').join('')
+
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        message: latestUserMessage.content,
+        personality: 'friendly',
+        material_context: sys,
+        user_name: prof().name || 'Friend',
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      const msg = data.detail ?? data.error?.message ?? 'Request failed'
+      onErr(typeof msg === 'string' ? msg : 'Request failed')
+      return
+    }
+
+    const text = data.reply ?? ''
     const words = text.split(' ')
     for (let i=0;i<words.length;i++) { await new Promise(r=>setTimeout(r,16)); onChunk((i===0?'':' ')+words[i]) }
     onDone()

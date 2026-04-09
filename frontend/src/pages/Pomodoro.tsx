@@ -1,10 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
+import { API_BASE_URL } from '../config'
 
-const AMBIENT: Record<string, string> = {
-  rain:   'https://cdn.pixabay.com/audio/2022/05/13/audio_257112ef96.mp3',
-  forest: 'https://cdn.pixabay.com/audio/2022/03/24/audio_1e91a8dcca.mp3',
-  cafe:   'https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
-  white:  'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1bab.mp3',
+let _actx: AudioContext | null = null
+let _nodes: AudioNode[] = []
+
+function stopAmb() {
+  _nodes.forEach(n => { try { (n as any).stop?.(); n.disconnect() } catch {} })
+  _nodes = []
+}
+
+async function playAmb(type: string) {
+  stopAmb()
+  try {
+    if (!_actx) _actx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    if (_actx.state === 'suspended') await _actx.resume()
+    const ctx = _actx
+    const len = ctx.sampleRate * 4
+    const nb  = ctx.createBuffer(2, len, ctx.sampleRate)
+    for (let c = 0; c < 2; c++) {
+      const d = nb.getChannelData(c)
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    }
+    const S = () => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; return s }
+    const G = (v: number) => { const g = ctx.createGain(); g.gain.value = v; g.connect(ctx.destination); return g }
+    const F = (t: BiquadFilterType, f: number) => { const x = ctx.createBiquadFilter(); x.type = t; x.frequency.value = f; return x }
+    if (type === 'white') { const s = S(), g = G(0.09); s.connect(g); s.start(); _nodes.push(s, g) }
+    if (type === 'rain')  { const s1=S(),hp=F('highpass',1200),lp=F('lowpass',10000),g1=G(0.2); s1.connect(hp);hp.connect(lp);lp.connect(g1);s1.start(); const s2=S(),lp2=F('lowpass',160),g2=G(0.05); s2.connect(lp2);lp2.connect(g2);s2.start(); _nodes.push(s1,hp,lp,g1,s2,lp2,g2) }
+    if (type === 'forest'){ const s=S(),bp=F('bandpass',480),g=G(0.07),lfo=ctx.createOscillator(),lg=ctx.createGain(); lfo.frequency.value=0.22;lg.gain.value=0.04;lfo.connect(lg);lg.connect(g.gain);s.connect(bp);bp.connect(g);s.start();lfo.start(); _nodes.push(s,bp,g,lfo,lg) }
+    if (type === 'cafe')  { const s1=S(),b1=F('bandpass',680),g1=G(0.06); s1.connect(b1);b1.connect(g1);s1.start(); const s2=S(),b2=F('bandpass',1250),g2=G(0.04); s2.connect(b2);b2.connect(g2);s2.start(); _nodes.push(s1,b1,g1,s2,b2,g2) }
+  } catch (e) {
+    console.warn('Ambient:', e)
+  }
 }
 
 function playBell() {
@@ -39,7 +65,6 @@ export default function Pomodoro() {
   const [aiTip, setAiTip]           = useState<string|null>(null)
 
   const ivRef    = useRef<ReturnType<typeof setInterval>|null>(null)
-  const audioRef = useRef<HTMLAudioElement|null>(null)
 
   const total = mode === 'work' ? workMins * 60 : brkMins * 60
   const pct   = total > 0 ? ((total - left) / total) * 100 : 0
@@ -70,15 +95,7 @@ export default function Pomodoro() {
     return () => { if (ivRef.current) clearInterval(ivRef.current) }
   }, [running, mode, workMins, brkMins])
 
-  useEffect(() => {
-    audioRef.current?.pause(); audioRef.current = null
-    if (sound && AMBIENT[sound]) {
-      const a = new Audio(AMBIENT[sound])
-      a.loop = true; a.volume = 0.28; a.play().catch(() => {})
-      audioRef.current = a
-    }
-    return () => audioRef.current?.pause()
-  }, [sound])
+  useEffect(() => () => stopAmb(), [])
 
   const switchMode = (m: 'work'|'break') => {
     clearInterval(ivRef.current!); ivRef.current = null
@@ -88,6 +105,16 @@ export default function Pomodoro() {
   const reset = () => {
     clearInterval(ivRef.current!); ivRef.current = null
     setRunning(false); setLeft(mode === 'work' ? workMins * 60 : brkMins * 60)
+  }
+
+  const handleSound = async (k: string | null) => {
+    if (!k || k === sound) {
+      stopAmb()
+      setSound(null)
+      return
+    }
+    setSound(k)
+    await playAmb(k)
   }
 
   const applyCustom = () => {
@@ -103,15 +130,18 @@ export default function Pomodoro() {
     setAiLoading(true); setAiTip(null)
     const profile = JSON.parse(localStorage.getItem('shh_profile') ?? '{}')
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 250,
-          messages: [{ role: 'user', content: `Study goals: ${profile.goals?.join(', ') || 'general study'}. Vibe: ${profile.vibe || 'balanced'}. Sessions today: ${sessions}. Suggest optimal Pomodoro focus and break times. Respond ONLY with JSON: {"work":25,"break":5,"tip":"one encouraging sentence"}` }]
+          message: `Study goals: ${profile.goals?.join(', ') || 'general study'}. Vibe: ${profile.vibe || 'balanced'}. Sessions today: ${sessions}. Suggest optimal Pomodoro focus and break times. Respond ONLY with JSON: {"work":25,"break":5,"tip":"one encouraging sentence"}`,
+          personality: 'friendly',
+          user_name: profile.name || 'Friend',
         })
       })
       const data = await res.json()
-      const text = (data.content ?? []).map((c: any) => c.text ?? '').join('')
+      if (!res.ok) throw new Error(data.detail ?? 'Request failed')
+      const text = data.reply ?? ''
       const p    = JSON.parse(text.replace(/```json|```/g, '').trim())
       setCustomWork(p.work); setCustomBrk(p.break)
       setAiTip(p.tip); setShowCustom(true)
@@ -204,13 +234,13 @@ export default function Pomodoro() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, borderTop: '0.5px solid var(--border)', width: '100%', justifyContent: 'center' }}>
               <span style={{ fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--text-3)', marginRight: 6 }}>Ambient</span>
               {soundBtns.map(({ k, l, title }) => (
-                <button key={k} title={title} onClick={() => setSound(s => s === k ? null : k)}
+                <button key={k} title={title} onClick={() => handleSound(k)}
                   style={{ width: 36, height: 36, borderRadius: 10, border: 'none', fontSize: 15, cursor: 'pointer', transition: 'all .18s', background: sound === k ? 'var(--accent-soft)' : 'var(--bg-pill)', transform: sound === k ? 'scale(1.08)' : 'scale(1)' }}>
                   {l}
                 </button>
               ))}
               {sound && (
-                <button onClick={() => setSound(null)} title="Stop"
+                <button onClick={() => handleSound(null)} title="Stop"
                   style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text-3)', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
