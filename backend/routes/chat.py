@@ -4,6 +4,7 @@ from typing import Optional
 import httpx
 import json
 import os
+import time
 from pathlib import Path
 
 router = APIRouter()
@@ -20,6 +21,10 @@ PERSONALITIES = {
     "calm": "You are a calm, wise mentor. Be thoughtful and measured.",
     "hype": "You are an energetic hype partner! Use lots of energy and enthusiasm!",
 }
+
+FREE_MODEL_CACHE_TTL_SECONDS = 600
+_free_models_cache: list[str] = []
+_free_models_cache_expires_at = 0.0
 
 
 def load_api_key() -> str:
@@ -89,6 +94,21 @@ async def fetch_free_models(client: httpx.AsyncClient, headers: dict[str, str]) 
     except Exception:
         return []
 
+
+async def get_cached_free_models(client: httpx.AsyncClient, headers: dict[str, str]) -> list[str]:
+    global _free_models_cache, _free_models_cache_expires_at
+
+    now = time.monotonic()
+    if _free_models_cache and now < _free_models_cache_expires_at:
+        return _free_models_cache
+
+    models = await fetch_free_models(client, headers)
+    if models:
+        _free_models_cache = models
+        _free_models_cache_expires_at = now + FREE_MODEL_CACHE_TTL_SECONDS
+
+    return models
+
 @router.post("/")
 async def chat(request: ChatRequest):
     api_key = load_api_key()
@@ -112,36 +132,45 @@ async def chat(request: ChatRequest):
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3000",
+            "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:3000"),
             "X-Title": "Study Buddy App"
         }
 
         preferred_models = [
             os.getenv("OPENROUTER_MODEL", "").strip(),
-            "qwen/qwen3-32b:free",
+            "google/gemini-flash-1.5-8b:free",
             "meta-llama/llama-3.3-8b-instruct:free",
             "mistralai/mistral-small-3.1-24b-instruct:free",
-            "google/gemini-flash-1.5-8b:free",
+            "qwen/qwen3-32b:free",
         ]
         preferred_models = [m for m in preferred_models if m]
 
         async with httpx.AsyncClient() as client:
-            discovered_models = await fetch_free_models(client, headers)
             candidate_models = []
-            for model in preferred_models + discovered_models:
+            for model in preferred_models:
                 if model not in candidate_models:
                     candidate_models.append(model)
+            if not candidate_models:
+                discovered_models = await get_cached_free_models(client, headers)
+                for model in discovered_models:
+                    if model not in candidate_models:
+                        candidate_models.append(model)
             if not candidate_models:
                 raise HTTPException(status_code=502, detail="No free models found on OpenRouter.")
 
             last_error = "No response received from model provider."
-            for model in candidate_models[:12]:
+            preferred_count = len(candidate_models)
+            model_index = 0
+
+            while model_index < min(len(candidate_models), 8):
+                model = candidate_models[model_index]
                 payload = {
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": request.message},
                     ],
+                    "max_tokens": 450,
                 }
                 response = await client.post(url, json=payload, headers=headers, timeout=60)
                 print(f"Model={model} Status={response.status_code}")
@@ -150,6 +179,7 @@ async def chat(request: ChatRequest):
                     data = response.json()
                 except json.JSONDecodeError:
                     last_error = f"Invalid JSON from model {model}: {response.text[:250]}"
+                    model_index += 1
                     continue
 
                 if response.status_code == 200:
@@ -158,15 +188,30 @@ async def chat(request: ChatRequest):
                         reply = choices[0]["message"]["content"]
                         return {"reply": reply.strip()}
                     last_error = f"Model {model} returned no choices."
+                    model_index += 1
                     continue
 
                 error_msg = extract_error_message(data, response.status_code)
                 last_error = f"{model}: {error_msg}"
 
                 if looks_like_unavailable_model(error_msg, response.status_code):
+                    model_index += 1
+                    if model_index >= preferred_count and len(candidate_models) == preferred_count:
+                        discovered_models = await get_cached_free_models(client, headers)
+                        for discovered_model in discovered_models:
+                            if discovered_model not in candidate_models:
+                                candidate_models.append(discovered_model)
                     continue
                 if response.status_code in {429, 500, 502, 503, 504}:
+                    model_index += 1
+                    if model_index >= preferred_count and len(candidate_models) == preferred_count:
+                        discovered_models = await get_cached_free_models(client, headers)
+                        for discovered_model in discovered_models:
+                            if discovered_model not in candidate_models:
+                                candidate_models.append(discovered_model)
                     continue
+
+                model_index += 1
 
             raise HTTPException(
                 status_code=502,

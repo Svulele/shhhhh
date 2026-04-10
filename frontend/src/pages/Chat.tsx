@@ -56,8 +56,7 @@ async function callAI(msgs:Message[], sys:string, onChunk:(t:string)=>void, onDo
     }
 
     const text = data.reply ?? ''
-    const words = text.split(' ')
-    for (let i=0;i<words.length;i++) { await new Promise(r=>setTimeout(r,16)); onChunk((i===0?'':' ')+words[i]) }
+    onChunk(text)
     onDone()
   } catch(e:any) { onErr(e?.message?.includes('fetch')?'Network error — check your connection.':`Error: ${e?.message}`) }
 }
