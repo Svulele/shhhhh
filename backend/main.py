@@ -42,3 +42,7 @@ app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 @app.get("/")
 def root():
     return {"message": "Shhhh API is running 🚀"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

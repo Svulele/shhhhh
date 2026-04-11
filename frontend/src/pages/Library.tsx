@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Page } from '../App'
-import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book {
@@ -164,6 +163,7 @@ function EbookPage({ buf, pageNum, totalPages, onLoad }: {
         if (cancelled) return
 
         // Group text by Y coordinate into visual lines
+        type LineEntry = { y: number; words: string[] }
         const lineMap = new Map<number, string[]>()
         ct.items.forEach((it: any) => {
           const y = Math.round(it.transform?.[5] ?? 0)
@@ -200,21 +200,30 @@ function EbookPage({ buf, pageNum, totalPages, onLoad }: {
     return () => { cancelled = true }
   }, [buf, pageNum])
 
+  // Two-column on wide/landscape, single on narrow
+  const isTwoCol = typeof window !== 'undefined' && window.innerWidth >= 900
+
   return (
-    <div style={{ width:'100%', maxWidth:700, margin:'0 auto', padding:'40px clamp(20px,5vw,64px) 80px' }}>
-      <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:36, textAlign:'center' }}>
-        Page {pageNum} of {totalPages}
-      </div>
+    <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', padding:'clamp(16px,3vh,36px) 0 clamp(12px,2vh,24px)' }}>
       {loading ? (
-        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:13, paddingTop:60 }}>Extracting text…</div>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-3)', fontSize:13 }}>Extracting text…</div>
       ) : items.length === 0 ? (
-        <div style={{ textAlign:'center', color:'var(--text-3)', fontSize:14, paddingTop:60 }}>No readable text on this page — switch to PDF view.</div>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}>
+          <p style={{ color:'var(--text-3)', fontSize:14 }}>No readable text on this page.</p>
+          <p style={{ color:'var(--text-3)', fontSize:12 }}>Switch to PDF view using the button above.</p>
+        </div>
       ) : (
-        <div>
+        <div style={{
+          flex:1, overflow:'hidden',
+          columnCount: isTwoCol ? 2 : 1,
+          columnGap: 'clamp(32px,5vw,64px)',
+          columnRule: '0.5px solid var(--border)',
+          padding: '0 clamp(20px,4vw,56px)',
+        }}>
           {items.map((it, i) => it.heading ? (
-            <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(17px,2vw,21px)', fontWeight:500, color:'var(--text-1)', margin:'2.2em 0 0.7em', lineHeight:1.3, letterSpacing:'-0.2px' }}>{it.text}</h2>
+            <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(15px,1.8vw,20px)', fontWeight:500, color:'var(--text-1)', margin:'1.6em 0 0.5em', lineHeight:1.3, letterSpacing:'-0.2px', breakAfter:'avoid', columnSpan:'all' }}>{it.text}</h2>
           ) : (
-            <p key={i} style={{ fontFamily:"Georgia, 'Times New Roman', var(--font-display), serif", fontSize:'clamp(16px,1.8vw,18px)', lineHeight:1.95, color:'var(--text-1)', marginBottom:'1em', textAlign:'justify', opacity:0.9 }}>{it.text}</p>
+            <p key={i} style={{ fontFamily:"Georgia,'Times New Roman',serif", fontSize:'clamp(15px,1.6vw,17px)', lineHeight:1.85, color:'var(--text-1)', marginBottom:'0.85em', textAlign:'justify', opacity:0.9, breakInside:'avoid' }}>{it.text}</p>
           ))}
         </div>
       )}
@@ -288,18 +297,16 @@ function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: n
 // ── AI recap ──────────────────────────────────────────────────
 async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        message:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON — no markdown:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}`,
-        personality:'friendly',
-        user_name:'Reader',
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON — no markdown:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }]
       })
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.detail ?? 'Request failed')
-    const text = data.reply ?? ''
+    if (data.error) throw new Error(data.error.message)
+    const text = (data.content ?? []).map((c:any) => c.text ?? '').join('')
     const p = JSON.parse(text.replace(/```json|```/g,'').trim())
     return { bookId:book.id, fromPage, toPage, summary:p.summary, questions:p.questions }
   } catch {
@@ -540,6 +547,10 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     setRecapLoading(true)
     const r = await generateRecap(activeBook, sessionStart, currentPage)
     setRecap(r); setRecapLoading(false); setView('recap')
+    // Auto-generate flashcards in background from what was just read
+    if (typeof (window as any).__shh_generateCards === 'function') {
+      ;(window as any).__shh_generateCards(activeBook, sessionStart, currentPage)
+    }
   }
 
   const deleteBook = async (id: string) => {
@@ -611,71 +622,84 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
         </div>
       </div>
 
-      {/* ── Reader ── */}
+      {/* ── Reader overlay — full screen, landscape-optimised ── */}
       {view==='reader' && activeBook && activeBuf && (
         <div style={{ position:'fixed', inset:0, background:'var(--bg)', zIndex:50, display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 24px', borderBottom:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(12px)', flexShrink:0 }}>
+
+          {/* Slim topbar */}
+          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', borderBottom:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(14px)', flexShrink:0, zIndex:2 }}>
             <button onClick={()=>{setView('shelf');setShowNotes(false)}}
-              style={{ width:34, height:34, borderRadius:'50%', border:'0.5px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              style={{ width:32, height:32, borderRadius:'50%', border:'0.5px solid var(--border)', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <div style={{ flex:1, fontSize:14, fontWeight:500, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-              {activeBook.title} <span style={{ color:'var(--text-3)', fontWeight:300 }}>— {activeBook.author}</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                {activeBook.title}
+              </div>
+              <div style={{ fontSize:10, color:'var(--text-3)', marginTop:1 }}>
+                {activeBook.author} · p.{currentPage} of {totalPages} · {pct}%
+              </div>
             </div>
-            {/* Ebook / PDF view toggle */}
+            {/* Progress bar in topbar */}
+            <div style={{ width:80, height:3, background:'var(--text-4)', borderRadius:99, overflow:'hidden', flexShrink:0 }}>
+              <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .5s ease' }}/>
+            </div>
             <button onClick={()=>setReaderMode(m => m==='pdf'?'ebook':'pdf')}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, border:'0.5px solid var(--border)', background:readerMode==='ebook'?'var(--accent-soft)':'var(--bg-card)', color:readerMode==='ebook'?'var(--accent)':'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s', flexShrink:0 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              {readerMode==='ebook' ? 'PDF view' : 'Reader view'}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:999, border:'0.5px solid var(--border)', background:readerMode==='ebook'?'var(--accent-soft)':'transparent', color:readerMode==='ebook'?'var(--accent)':'var(--text-3)', fontSize:11, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s', flexShrink:0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              {readerMode==='ebook' ? 'PDF' : 'Reader'}
             </button>
             <button onClick={()=>setShowNotes(n=>!n)}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:999, border:'0.5px solid var(--border)', background:showNotes?'var(--accent-soft)':'var(--bg-card)', color:showNotes?'var(--accent)':'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:999, border:'0.5px solid var(--border)', background:showNotes?'var(--accent-soft)':'transparent', color:showNotes?'var(--accent)':'var(--text-3)', fontSize:11, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s', flexShrink:0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Notes
             </button>
-            <div style={{ fontSize:12, color:'var(--text-3)', flexShrink:0 }}>p.{currentPage} of {totalPages}</div>
+            <button onClick={finishSession} disabled={recapLoading}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 13px', borderRadius:999, background:'linear-gradient(135deg,var(--accent),#7b6cf6)', border:'none', fontSize:11, color:'white', cursor:recapLoading?'default':'pointer', fontFamily:'var(--font-body)', boxShadow:'0 2px 10px var(--accent-glow)', opacity:recapLoading?0.6:1, flexShrink:0 }}>
+              {recapLoading?'…':'Done'}
+            </button>
           </div>
 
-          {/* Reader body — scroll container, PDF/ebook centred */}
-          <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', position:'relative', background:'var(--bg)' }}>
-            <div style={{ minHeight:'100%', display:'flex', justifyContent:'center', padding: readerMode==='ebook' ? '0' : '24px clamp(16px,4vw,48px) 80px' }}>
+          {/* Body: left arrow | content | right arrow — landscape book feel */}
+          <div style={{ flex:1, display:'flex', alignItems:'stretch', minHeight:0, position:'relative' }}>
+
+            {/* Left nav zone — click anywhere on left 15% to go back */}
+            <button onClick={()=>updatePage(currentPage-1)} disabled={currentPage<=1}
+              style={{ width:'clamp(44px,8vw,80px)', flexShrink:0, background:'transparent', border:'none', cursor:currentPage<=1?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:currentPage<=1?0.15:0.4, transition:'opacity .2s', zIndex:2 }}
+              onMouseEnter={e=>{if(currentPage>1)(e.currentTarget as HTMLButtonElement).style.opacity='1'}}
+              onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.opacity=currentPage<=1?'0.15':'0.4'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+
+            {/* Main reading area */}
+            <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', minWidth:0, position:'relative' }}>
               {readerMode === 'ebook'
                 ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
                     onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
-                : <PdfPage buf={activeBuf} pageNum={currentPage}
-                    onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+                : (
+                  <div style={{ display:'flex', justifyContent:'center', padding:'20px clamp(8px,2vw,24px) 20px' }}>
+                    <PdfPage buf={activeBuf} pageNum={currentPage}
+                      onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
+                  </div>
+                )
               }
             </div>
-            {showNotes && <NotesPanel book={activeBook} currentPage={currentPage} onClose={()=>setShowNotes(false)}/>}
-          </div>
 
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderTop:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(12px)', flexShrink:0 }}>
-            <button onClick={()=>updatePage(currentPage-1)} disabled={currentPage<=1} style={rdrBtn(currentPage<=1)}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-              Previous
+            {/* Right nav zone */}
+            <button onClick={()=>updatePage(currentPage+1)} disabled={currentPage>=totalPages}
+              style={{ width:'clamp(44px,8vw,80px)', flexShrink:0, background:'transparent', border:'none', cursor:currentPage>=totalPages?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:currentPage>=totalPages?0.15:0.4, transition:'opacity .2s', zIndex:2 }}
+              onMouseEnter={e=>{if(currentPage<totalPages)(e.currentTarget as HTMLButtonElement).style.opacity='1'}}
+              onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.opacity=currentPage>=totalPages?'0.15':'0.4'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-              <div style={{ height:3, width:180, background:'var(--text-4)', borderRadius:99, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,var(--accent),#b07ef7)', borderRadius:99, transition:'width .5s ease' }}/>
-              </div>
-              <span style={{ fontSize:10, color:'var(--text-3)' }}>{pct}% complete</span>
-            </div>
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={()=>updatePage(currentPage+1)} disabled={currentPage>=totalPages} style={rdrBtn(currentPage>=totalPages)}>
-                Next
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-              <button onClick={finishSession} disabled={recapLoading}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:999, background:'linear-gradient(135deg,var(--accent),#7b6cf6)', border:'none', fontSize:12, color:'white', cursor:recapLoading?'default':'pointer', fontFamily:'var(--font-body)', boxShadow:'0 3px 14px var(--accent-glow)', opacity:recapLoading?0.6:1 }}>
-                {recapLoading?'Generating…':'Finish session'}
-                {!recapLoading&&<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
-              </button>
-            </div>
+
+            {/* Notes panel slides in from right */}
+            {showNotes && <NotesPanel book={activeBook} currentPage={currentPage} onClose={()=>setShowNotes(false)}/>}
           </div>
         </div>
       )}
 
-      {/* ── Recap ── */}
+            {/* ── Recap ── */}
       {view==='recap' && recap && (
         <RecapCard recap={recap}
           onClose={()=>{setRecap(null);setView('shelf');setActiveBook(null);setActiveBuf(null)}}

@@ -136,91 +136,53 @@ async def chat(request: ChatRequest):
             "X-Title": "Study Buddy App"
         }
 
-        preferred_models = [
-            os.getenv("OPENROUTER_MODEL", "").strip(),
-            "google/gemini-flash-1.5-8b:free",
-            "meta-llama/llama-3.3-8b-instruct:free",
-            "mistralai/mistral-small-3.1-24b-instruct:free",
-            "qwen/qwen3-32b:free",
+        # Try models in order - use working free models
+        models_to_try = [
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "qwen/qwen-2-7b-instruct:free",
+            "meta-llama/codellama-34b-instruct:free",
         ]
-        preferred_models = [m for m in preferred_models if m]
 
-        async with httpx.AsyncClient() as client:
-            candidate_models = []
-            for model in preferred_models:
-                if model not in candidate_models:
-                    candidate_models.append(model)
-            if not candidate_models:
-                discovered_models = await get_cached_free_models(client, headers)
-                for model in discovered_models:
-                    if model not in candidate_models:
-                        candidate_models.append(model)
-            if not candidate_models:
-                raise HTTPException(status_code=502, detail="No free models found on OpenRouter.")
-
-            last_error = "No response received from model provider."
-            preferred_count = len(candidate_models)
-            model_index = 0
-
-            while model_index < min(len(candidate_models), 8):
-                model = candidate_models[model_index]
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": request.message},
-                    ],
-                    "max_tokens": 450,
-                }
-                response = await client.post(url, json=payload, headers=headers, timeout=60)
-                print(f"Model={model} Status={response.status_code}")
-
+        async with httpx.AsyncClient(timeout=15) as client:
+            last_error = None
+            for model in models_to_try:
                 try:
-                    data = response.json()
-                except json.JSONDecodeError:
-                    last_error = f"Invalid JSON from model {model}: {response.text[:250]}"
-                    model_index += 1
+                    payload = {
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": request.message},
+                        ],
+                        "max_tokens": 450,
+                    }
+                    response = await client.post(url, json=payload, headers=headers)
+                    print(f"[CHAT] Model={model} Status={response.status_code}")
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        choices = data.get("choices", [])
+                        if choices and "message" in choices[0]:
+                            reply = choices[0]["message"].get("content", "")
+                            if reply:
+                                return {"reply": reply.strip()}
+                    else:
+                        error_text = response.text[:200]
+                        last_error = f"{model}: HTTP {response.status_code} - {error_text}"
+                        print(f"[CHAT] {last_error}")
+                        
+                except Exception as e:
+                    last_error = f"{model}: {str(e)}"
+                    print(f"[CHAT] Error with {model}: {str(e)}")
                     continue
-
-                if response.status_code == 200:
-                    choices = data.get("choices", []) if isinstance(data, dict) else []
-                    if choices and "message" in choices[0] and "content" in choices[0]["message"]:
-                        reply = choices[0]["message"]["content"]
-                        return {"reply": reply.strip()}
-                    last_error = f"Model {model} returned no choices."
-                    model_index += 1
-                    continue
-
-                error_msg = extract_error_message(data, response.status_code)
-                last_error = f"{model}: {error_msg}"
-
-                if looks_like_unavailable_model(error_msg, response.status_code):
-                    model_index += 1
-                    if model_index >= preferred_count and len(candidate_models) == preferred_count:
-                        discovered_models = await get_cached_free_models(client, headers)
-                        for discovered_model in discovered_models:
-                            if discovered_model not in candidate_models:
-                                candidate_models.append(discovered_model)
-                    continue
-                if response.status_code in {429, 500, 502, 503, 504}:
-                    model_index += 1
-                    if model_index >= preferred_count and len(candidate_models) == preferred_count:
-                        discovered_models = await get_cached_free_models(client, headers)
-                        for discovered_model in discovered_models:
-                            if discovered_model not in candidate_models:
-                                candidate_models.append(discovered_model)
-                    continue
-
-                model_index += 1
 
             raise HTTPException(
                 status_code=502,
-                detail=f"All model attempts failed. Last error: {last_error}",
+                detail=f"No working models available. Last error: {last_error}",
             )
 
     except HTTPException:
         raise
     except Exception as e:
         import traceback
-        print(f"Error: {traceback.format_exc()}")
+        print(f"[CHAT] Exception: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

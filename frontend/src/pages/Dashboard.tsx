@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
-import { API_BASE_URL } from '../config'
 
 // ── 30 rotating quotes ────────────────────────────────────────
 const QUOTES = [
@@ -38,10 +37,24 @@ const QUOTES = [
   { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
 ]
 
-// Rotates 4× per day
-const todayQuote = () => {
-  const d = new Date()
-  const idx = (d.getDate() * 6 + Math.floor(d.getHours() / 4)) % QUOTES.length
+// ── Daily quote — no repeats, tracks seen quotes in localStorage ─
+const getQuoteOfDay = () => {
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  const stored = (() => { try { return JSON.parse(localStorage.getItem('shh_quote_state') ?? '{}') } catch { return {} } })()
+
+  // Same day — return cached quote
+  if (stored.date === today && typeof stored.idx === 'number') {
+    return QUOTES[stored.idx % QUOTES.length]
+  }
+
+  // New day — pick next unseen quote
+  const seen: number[] = stored.seen ?? []
+  const unseen = QUOTES.map((_, i) => i).filter(i => !seen.includes(i))
+  const pool   = unseen.length > 0 ? unseen : QUOTES.map((_, i) => i) // reset when all seen
+  const idx    = pool[Math.floor(Math.random() * pool.length)]
+  const newSeen = unseen.length > 0 ? [...seen, idx] : [idx]
+
+  localStorage.setItem('shh_quote_state', JSON.stringify({ date: today, idx, seen: newSeen }))
   return QUOTES[idx]
 }
 
@@ -313,18 +326,13 @@ function PomodoroWidget() {
     setAiLoad(true)
     const p = (() => { try { return JSON.parse(localStorage.getItem('shh_profile') ?? '{}') } catch { return {} } })()
     try {
-      const res = await fetch(`${API_BASE_URL}/api/chat/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Goals: ${p.goals?.join(', ') || 'study'}. Vibe: ${p.vibe || 'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}`,
-          personality: 'friendly',
-          user_name: p.name || 'Friend',
-        })
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 150,
+          messages: [{ role: 'user', content: `Goals: ${p.goals?.join(', ')||'study'}. Vibe: ${p.vibe||'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}` }] })
       })
       const d = await res.json()
-      if (!res.ok) throw new Error(d.detail ?? 'Request failed')
-      const t = d.reply ?? ''
+      const t = (d.content??[]).map((c:any)=>c.text??'').join('')
       const parsed = JSON.parse(t.replace(/```json|```/g,'').trim())
       setCwMins(parsed.work ?? 25); setCbMins(parsed.break ?? 5); setShowCfg(true)
     } catch {}
@@ -414,13 +422,51 @@ function PomodoroWidget() {
   )
 }
 
-// ── Weather pill ──────────────────────────────────────────────
-function WeatherPill({ lat, lon, loc }: { lat: number; lon: number; loc: string }) {
+// ── Weather pill — live updates as device moves ───────────────
+function WeatherPill({ lat: initLat, lon: initLon, loc: initLoc }: { lat: number; lon: number; loc: string }) {
   const [temp, setTemp] = useState<number | null>(null)
+  const [loc,  setLoc]  = useState(initLoc)
+  const fetchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchWeather = async (la: number, lo: number) => {
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current_weather=true`)
+      const d = await r.json()
+      setTemp(Math.round(d.current_weather?.temperature ?? 0))
+    } catch {}
+  }
+
   useEffect(() => {
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-      .then(r => r.json()).then(d => setTemp(Math.round(d.current_weather?.temperature ?? 0))).catch(() => {})
-  }, [lat, lon])
+    // Initial fetch
+    fetchWeather(initLat, initLon)
+
+    // Watch position for live updates (fires when device moves significantly)
+    if (!navigator.geolocation) return
+    const id = navigator.geolocation.watchPosition(
+      async pos => {
+        const { latitude: la, longitude: lo } = pos.coords
+        // Debounce — don't hammer the weather API
+        if (fetchRef.current) clearTimeout(fetchRef.current)
+        fetchRef.current = setTimeout(async () => {
+          fetchWeather(la, lo)
+          // Update location name
+          try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${la}&lon=${lo}&format=json`)
+            const d = await r.json()
+            const name = d.address?.city || d.address?.town || d.address?.state
+            if (name) setLoc(name)
+          } catch {}
+        }, 5000) // 5s debounce
+      },
+      () => {}, // silently ignore errors
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 30000 }
+    )
+    return () => {
+      navigator.geolocation.clearWatch(id)
+      if (fetchRef.current) clearTimeout(fetchRef.current)
+    }
+  }, [initLat, initLon])
+
   return (
     <div className="weather-pill">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(250,190,50,.9)" strokeWidth="1.9" strokeLinecap="round">
@@ -439,7 +485,7 @@ function WeatherPill({ lat, lon, loc }: { lat: number; lon: number; loc: string 
 }
 
 // ── Main dashboard ────────────────────────────────────────────
-export default function Dashboard({ material: _material, setPage }: { material: any; setPage: (p: Page) => void }) {
+export default function Dashboard({ material, setPage }: { material: any; setPage: (p: Page) => void }) {
   const { toggle, theme } = useTheme()
   const { user }          = useUser()
 
@@ -447,7 +493,7 @@ export default function Dashboard({ material: _material, setPage }: { material: 
   const [streak,  setStreak]  = useState(0)
   const [greeting, setGreeting] = useState('')
 
-  const quote   = todayQuote()
+  const quote   = getQuoteOfDay()
   const session = (() => { try { return JSON.parse(localStorage.getItem('shh_session') ?? 'null') } catch { return null } })()
 
   useEffect(() => {
@@ -464,7 +510,7 @@ export default function Dashboard({ material: _material, setPage }: { material: 
   // Sync streak from Supabase if logged in, else use local
   useEffect(() => {
     if (user) {
-      getStreak(user.id).then((s: number) => {
+      getStreak(user.id).then(s => {
         setStreak(s)
         localStorage.setItem('shh_streak', String(s))
         // Record today as a study day when they open the dashboard
