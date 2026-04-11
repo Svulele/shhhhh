@@ -139,8 +139,8 @@ function PdfPage({ buf, pageNum, scale = 1.4, onLoad }: {
 }
 
 // ── Ebook reader — Safari Reader style ─────────────────────
-function EbookPage({ buf, pageNum, totalPages, onLoad }: {
-  buf: ArrayBuffer; pageNum: number; totalPages: number; onLoad?: (total: number) => void
+function EbookPage({ buf, pageNum, onLoad }: {
+  buf: ArrayBuffer; pageNum: number; onLoad?: (total: number) => void
 }) {
   const [items, setItems] = useState<{text:string; heading:boolean}[]>([])
   const [loading, setLoading] = useState(true)
@@ -163,7 +163,6 @@ function EbookPage({ buf, pageNum, totalPages, onLoad }: {
         if (cancelled) return
 
         // Group text by Y coordinate into visual lines
-        type LineEntry = { y: number; words: string[] }
         const lineMap = new Map<number, string[]>()
         ct.items.forEach((it: any) => {
           const y = Math.round(it.transform?.[5] ?? 0)
@@ -426,12 +425,6 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   background:active?'var(--bg-pill)':'transparent',
   color:active?'var(--text-1)':'var(--text-3)', transition:'all .18s',
 })
-const rdrBtn = (disabled: boolean): React.CSSProperties => ({
-  display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-  borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)',
-  fontSize:12, color:'var(--text-2)', fontFamily:'var(--font-body)',
-  cursor:disabled?'default':'pointer', opacity:disabled?0.35:1, transition:'all .18s',
-})
 
 // ── Main ──────────────────────────────────────────────────────
 export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=>void; setPage:(p:Page)=>void }) {
@@ -674,7 +667,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             {/* Main reading area */}
             <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', minWidth:0, position:'relative' }}>
               {readerMode === 'ebook'
-                ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
+                ? <EbookPage buf={activeBuf} pageNum={currentPage}
                     onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
                 : (
                   <div style={{ display:'flex', justifyContent:'center', padding:'20px clamp(8px,2vw,24px) 20px' }}>

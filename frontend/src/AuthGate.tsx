@@ -5,7 +5,7 @@ import type { User } from '@supabase/supabase-js'
 export { recordStudyDay, getStreak }
 
 interface AuthGateProps {
-  children: (user: User, doSignOut: () => void) => React.ReactNode
+  children: (user: User, doSignOut: () => Promise<void>) => React.ReactNode
 }
 
 // ── Loading screen — shown after sign-in while profile syncs ──

@@ -62,7 +62,7 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
   )
 }
 
-function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => void }) {
+function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => Promise<void> }) {
   const [page, setPage]         = useState<Page>('dashboard')
   const [material, setMaterial] = useState<any>(null)
   const [theme, setTheme]       = useState<Theme>(() =>
@@ -96,7 +96,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
         <div className="app">
           <div className={isHome ? 'main-home' : 'main'} key={page}>
             <div className="page-enter">
-              {page === 'dashboard' && <Dashboard material={material} setPage={navigate} />}
+              {page === 'dashboard' && <Dashboard setPage={navigate} />}
               {page === 'library'   && <Library setMaterial={setMaterial} setPage={navigate} />}
               {page === 'chat'      && <Chat material={material} />}
               {page === 'pomodoro'  && <Pomodoro />}
@@ -121,7 +121,7 @@ export default function App() {
   }, [])
 
   if (skipAuth) {
-    return <AppShell user={null} doSignOut={() => { localStorage.removeItem('shh_skip_auth'); window.location.reload() }} />
+    return <AppShell user={null} doSignOut={async () => { localStorage.removeItem('shh_skip_auth'); window.location.reload() }} />
   }
 
   return (

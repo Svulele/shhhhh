@@ -59,34 +59,9 @@ const VIBE_CONFIG: Record<string, {
   },
 }
 
-function buildSystem(bookCtx?: string, recap?: any): string {
-  const p      = getProfile()
-  const vibe   = p.vibe ?? 'balanced'
-  const cfg    = VIBE_CONFIG[vibe] ?? VIBE_CONFIG.balanced
-  const name   = p.name ? `The user's name is ${p.name}.` : ''
-  const goals  = p.goals?.length ? `Their study goals: ${p.goals.join(', ')}.` : ''
-  const vibeId = `Current study vibe: "${vibe}".`
-
-  let sys = `You are Shhhhh, an AI study buddy. ${name} ${goals} ${vibeId}
-
-PERSONALITY: ${cfg.system}
-
-IMPORTANT RULES:
-- Stay in character for the "${vibe}" vibe at all times — this affects your tone, pace, and how you respond to mistakes
-- You're a companion, not just a tool — remember context within this conversation
-- Keep responses concise and well-structured. Use markdown for lists/code when helpful
-- If asked to quiz the user, actually do it — ask questions, wait for answers, then give feedback
-- Adapt language complexity to their goals and how they're responding`
-
-  if (bookCtx) sys += `\n\nBook context: The user is reading "${bookCtx}". Reference this when relevant.`
-  if (recap)   sys += `\n\nRecent reading session: pages ${recap.fromPage}–${recap.toPage}. Summary: ${recap.summary?.join(' ')}`
-
-  return sys.trim()
-}
-
 // ── AI call ───────────────────────────────────────────────────
 async function callAI(
-  msgs: Message[], sys: string,
+  msgs: Message[],
   onChunk: (t: string) => void,
   onDone: () => void,
   onErr: (e: string) => void
@@ -284,8 +259,6 @@ export default function Chat({ material }: { material: any }) {
     setInput(''); setError(null)
 
     // Re-read profile EVERY send so vibe/name/goals are always current
-    const sys = buildSystem(bookCtx, recap)
-
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content, ts: Date.now() }
     const updated = [...messages, userMsg]
     setMessages(updated)
@@ -303,7 +276,7 @@ export default function Chat({ material }: { material: any }) {
 
     let full = ''
     await callAI(
-      updated, sys,
+      updated,
       chunk => { full += chunk; setMessages(m => m.map(x => x.id === aiId ? { ...x, content: full } : x)) },
       () => {
         setStreaming(false); setStreamId(null)

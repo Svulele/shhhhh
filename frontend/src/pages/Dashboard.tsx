@@ -485,7 +485,7 @@ function WeatherPill({ lat: initLat, lon: initLon, loc: initLoc }: { lat: number
 }
 
 // ── Main dashboard ────────────────────────────────────────────
-export default function Dashboard({ material, setPage }: { material: any; setPage: (p: Page) => void }) {
+export default function Dashboard({ setPage }: { setPage: (p: Page) => void }) {
   const { toggle, theme } = useTheme()
   const { user }          = useUser()
 
