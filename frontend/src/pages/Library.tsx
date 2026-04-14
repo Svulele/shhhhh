@@ -139,8 +139,8 @@ function PdfPage({ buf, pageNum, scale = 1.4, onLoad }: {
 }
 
 // ── Ebook reader — Safari Reader style ─────────────────────
-function EbookPage({ buf, pageNum, onLoad }: {
-  buf: ArrayBuffer; pageNum: number; onLoad?: (total: number) => void
+function EbookPage({ buf, pageNum, totalPages, onLoad }: {
+  buf: ArrayBuffer; pageNum: number; totalPages: number; onLoad?: (total: number) => void
 }) {
   const [items, setItems] = useState<{text:string; heading:boolean}[]>([])
   const [loading, setLoading] = useState(true)
@@ -163,6 +163,7 @@ function EbookPage({ buf, pageNum, onLoad }: {
         if (cancelled) return
 
         // Group text by Y coordinate into visual lines
+        type LineEntry = { y: number; words: string[] }
         const lineMap = new Map<number, string[]>()
         ct.items.forEach((it: any) => {
           const y = Math.round(it.transform?.[5] ?? 0)
@@ -202,8 +203,83 @@ function EbookPage({ buf, pageNum, onLoad }: {
   // Two-column on wide/landscape, single on narrow
   const isTwoCol = typeof window !== 'undefined' && window.innerWidth >= 900
 
+  // Highlight → flashcard: listen for text selection, show popup
+  const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null)
+  const [cardSaved, setCardSaved] = useState(false)
+
+  const handleMouseUp = () => {
+    const sel = window.getSelection()
+    const text = sel?.toString().trim()
+    if (!text || text.length < 10) { setSelection(null); return }
+    const range = sel?.getRangeAt(0)
+    const rect  = range?.getBoundingClientRect()
+    if (rect) {
+      setSelection({ text, x: rect.left + rect.width / 2, y: rect.top - 12 })
+    }
+  }
+
+  const saveHighlightAsCard = () => {
+    if (!selection) return
+    const card = {
+      id: `hl_${Date.now()}`,
+      bookId: '', bookTitle: 'Highlight',
+      front: `What does this mean? "${selection.text.slice(0, 80)}${selection.text.length > 80 ? '…' : ''}"`,
+      back: selection.text,
+      fromPage: pageNum, toPage: pageNum,
+      difficulty: null,
+      createdAt: Date.now(),
+      nextReview: 0, interval: 1, reviewCount: 0,
+    }
+    try {
+      const existing = JSON.parse(localStorage.getItem('shh_flashcards') ?? '[]')
+      localStorage.setItem('shh_flashcards', JSON.stringify([...existing, card]))
+    } catch {}
+    setCardSaved(true)
+    setTimeout(() => { setSelection(null); setCardSaved(false); window.getSelection()?.removeAllRanges() }, 1200)
+  }
+
   return (
-    <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', padding:'clamp(16px,3vh,36px) 0 clamp(12px,2vh,24px)' }}>
+    <div
+      style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', padding:'clamp(16px,3vh,36px) 0 clamp(12px,2vh,24px)', userSelect:'text' }}
+      onMouseUp={handleMouseUp}
+      onTouchEnd={handleMouseUp}
+    >
+      {/* Selection popup */}
+      {selection && (
+        <div style={{
+          position: 'fixed',
+          left: Math.min(selection.x, window.innerWidth - 180),
+          top: selection.y,
+          transform: 'translate(-50%, -100%)',
+          zIndex: 200,
+          background: 'var(--bg-card)',
+          border: '0.5px solid var(--border-active)',
+          borderRadius: 999,
+          padding: '7px 14px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+          backdropFilter: 'blur(16px)',
+          animation: 'toastIn .2s ease both',
+          pointerEvents: 'auto',
+        }}>
+          {cardSaved ? (
+            <span style={{ fontSize: 12, color: 'var(--green)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>✓ Card saved!</span>
+          ) : (
+            <>
+              <button onClick={saveHighlightAsCard}
+                style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-body)', fontWeight:500, padding:0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/>
+                </svg>
+                Add flashcard
+              </button>
+              <button onClick={() => setSelection(null)}
+                style={{ fontSize:11, color:'var(--text-3)', background:'none', border:'none', cursor:'pointer', padding:0 }}>✕</button>
+            </>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-3)', fontSize:13 }}>Extracting text…</div>
       ) : items.length === 0 ? (
@@ -222,7 +298,7 @@ function EbookPage({ buf, pageNum, onLoad }: {
           {items.map((it, i) => it.heading ? (
             <h2 key={i} style={{ fontFamily:'var(--font-display)', fontSize:'clamp(15px,1.8vw,20px)', fontWeight:500, color:'var(--text-1)', margin:'1.6em 0 0.5em', lineHeight:1.3, letterSpacing:'-0.2px', breakAfter:'avoid', columnSpan:'all' }}>{it.text}</h2>
           ) : (
-            <p key={i} style={{ fontFamily:"Georgia,'Times New Roman',serif", fontSize:'clamp(15px,1.6vw,17px)', lineHeight:1.85, color:'var(--text-1)', marginBottom:'0.85em', textAlign:'justify', opacity:0.9, breakInside:'avoid' }}>{it.text}</p>
+            <p key={i} style={{ fontFamily:"Georgia,'Times New Roman',serif", fontSize:'clamp(15px,1.6vw,17px)', lineHeight:1.85, color:'var(--text-1)', marginBottom:'0.85em', textAlign:'justify', opacity:0.9, breakInside:'avoid', cursor:'text' }}>{it.text}</p>
           ))}
         </div>
       )}
@@ -425,6 +501,12 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   background:active?'var(--bg-pill)':'transparent',
   color:active?'var(--text-1)':'var(--text-3)', transition:'all .18s',
 })
+const rdrBtn = (disabled: boolean): React.CSSProperties => ({
+  display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+  borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)',
+  fontSize:12, color:'var(--text-2)', fontFamily:'var(--font-body)',
+  cursor:disabled?'default':'pointer', opacity:disabled?0.35:1, transition:'all .18s',
+})
 
 // ── Main ──────────────────────────────────────────────────────
 export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=>void; setPage:(p:Page)=>void }) {
@@ -526,6 +608,8 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     setCurrentPage(book.currentPage || 1)
     setSessionStart(book.currentPage || 1)
     setTotalPages(book.totalPages || 1)
+    // Track when reading session starts
+    ;(window as any).__shh_readStart = Date.now()
     setView('reader'); setShowNotes(false)
   }
 
@@ -621,7 +705,23 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
 
           {/* Slim topbar */}
           <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', borderBottom:'0.5px solid var(--border)', background:'var(--bg-card)', backdropFilter:'blur(14px)', flexShrink:0, zIndex:2 }}>
-            <button onClick={()=>{setView('shelf');setShowNotes(false)}}
+            <button onClick={()=>{
+              // Save reading time
+              const start = (window as any).__shh_readStart
+              if (start) {
+                const secs = Math.round((Date.now() - start) / 1000)
+                if (secs > 10) {
+                  const today = new Date().toISOString().split('T')[0]
+                  try {
+                    const d = JSON.parse(localStorage.getItem('shh_study_time') ?? '{}')
+                    d[today] = (d[today] ?? 0) + secs
+                    localStorage.setItem('shh_study_time', JSON.stringify(d))
+                  } catch {}
+                }
+                delete (window as any).__shh_readStart
+              }
+              setView('shelf');setShowNotes(false)
+            }}
               style={{ width:32, height:32, borderRadius:'50%', border:'0.5px solid var(--border)', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
@@ -667,7 +767,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             {/* Main reading area */}
             <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', minWidth:0, position:'relative' }}>
               {readerMode === 'ebook'
-                ? <EbookPage buf={activeBuf} pageNum={currentPage}
+                ? <EbookPage buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
                     onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}/>
                 : (
                   <div style={{ display:'flex', justifyContent:'center', padding:'20px clamp(8px,2vw,24px) 20px' }}>

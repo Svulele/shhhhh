@@ -8,6 +8,28 @@ interface Card {
   fromPage: number; toPage: number
   difficulty: 'easy' | 'medium' | 'hard' | null
   createdAt: number
+  nextReview: number   // timestamp — 0 means due now
+  interval: number     // days until next review
+  reviewCount: number  // total times reviewed
+}
+
+// ── Spaced repetition scheduling (SM-2 simplified) ────────────
+// Hard  → review again tomorrow (1 day)
+// Okay  → review in 3 days (or interval * 1.5)
+// Easy  → review in 7 days (or interval * 2.5)
+function scheduleCard(card: Card, rating: 'easy' | 'medium' | 'hard'): Partial<Card> {
+  const now      = Date.now()
+  const interval = card.interval || 1
+  let nextInterval: number
+  if      (rating === 'hard')   nextInterval = 1
+  else if (rating === 'medium') nextInterval = Math.max(3, Math.round(interval * 1.5))
+  else                          nextInterval = Math.max(7, Math.round(interval * 2.5))
+  return {
+    difficulty:   rating,
+    interval:     nextInterval,
+    nextReview:   now + nextInterval * 86400000,
+    reviewCount: (card.reviewCount || 0) + 1,
+  }
 }
 
 // ── Storage ───────────────────────────────────────────────────
@@ -183,7 +205,7 @@ export default function Flashcards() {
     setGenerating(true); setGenError(null)
     try {
       const newCards = await generateFromSession(book, fromPage, toPage)
-      const stamped  = newCards.map(c => ({ ...c, id: `${Date.now()}_${Math.random().toString(36).slice(2)}`, createdAt: Date.now() }))
+      const stamped  = newCards.map(c => ({ ...c, id: `${Date.now()}_${Math.random().toString(36).slice(2)}`, createdAt: Date.now(), nextReview: 0, interval: 1, reviewCount: 0 }))
       setCards(prev => {
         // Replace cards for this session (same book + overlapping page range)
         const filtered = prev.filter(c => !(c.bookId === book.id && c.fromPage === fromPage && c.toPage === toPage))
@@ -197,19 +219,23 @@ export default function Flashcards() {
   }
 
   const filtered = selBook === 'all' ? cards : cards.filter(c => c.bookId === selBook)
-  const reviewQ  = filtered.filter(c => c.difficulty !== 'easy')
+  const now      = Date.now()
+  // Due = never reviewed (nextReview===0) OR nextReview timestamp has passed
+  const reviewQ  = filtered.filter(c => !c.nextReview || c.nextReview <= now)
   const display  = mode === 'review' ? reviewQ : filtered
   const current  = display[idx]
 
   const stats = {
-    total:  filtered.length,
-    easy:   filtered.filter(c => c.difficulty === 'easy').length,
-    hard:   filtered.filter(c => c.difficulty === 'hard').length,
-    unseen: filtered.filter(c => c.difficulty === null).length,
+    total:    filtered.length,
+    due:      reviewQ.length,
+    mastered: filtered.filter(c => c.difficulty === 'easy' && c.reviewCount && c.reviewCount >= 3).length,
+    unseen:   filtered.filter(c => !c.nextReview || c.nextReview === 0).length,
   }
 
   const rate = (difficulty: 'easy' | 'medium' | 'hard') => {
-    setCards(prev => prev.map(c => c.id === current?.id ? { ...c, difficulty } : c))
+    if (!current) return
+    const scheduled = scheduleCard(current, difficulty)
+    setCards(prev => prev.map(c => c.id === current.id ? { ...c, ...scheduled } : c))
     const next = idx + 1
     if (mode === 'review' && next >= reviewQ.length) { setDone(true); return }
     if (next < display.length) setIdx(next)
@@ -227,7 +253,7 @@ export default function Flashcards() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '-0.5px', color: 'var(--text-1)' }}>Flashcards</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
               {stats.total} card{stats.total !== 1 ? 's' : ''}
-              {stats.easy > 0 ? ` · ${stats.easy} mastered` : ''}
+              {stats.due > 0 ? ` · ${stats.due} due` : ' · all caught up ✓'}
               {stats.unseen > 0 ? ` · ${stats.unseen} new` : ''}
             </div>
           </div>
@@ -235,7 +261,7 @@ export default function Flashcards() {
             <button
               onClick={() => { setMode('review'); setIdx(0); setDone(false) }}
               style={{ padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(135deg,var(--accent),#7b6cf6)', border: 'none', color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)', boxShadow: '0 4px 14px var(--accent-glow)', transition: 'all .2s' }}>
-              Review {reviewQ.length > 0 ? `(${reviewQ.length})` : '— all mastered ✓'}
+              {reviewQ.length > 0 ? `Review (${reviewQ.length} due)` : '✓ All caught up'}
             </button>
           )}
         </div>

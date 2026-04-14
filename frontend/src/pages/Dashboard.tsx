@@ -484,8 +484,77 @@ function WeatherPill({ lat: initLat, lon: initLon, loc: initLoc }: { lat: number
   )
 }
 
+// ── Study time helpers ───────────────────────────────────────
+function getStudyTimeData() {
+  try { return JSON.parse(localStorage.getItem('shh_study_time') ?? '{}') } catch { return {} }
+}
+
+function fmtMins(secs: number): string {
+  if (secs < 60) return `${secs}s`
+  const m = Math.round(secs / 60)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60); const rem = m % 60
+  return rem > 0 ? `${h}h ${rem}m` : `${h}h`
+}
+
+// ── 7-day study chart ─────────────────────────────────────────
+function StudyStats() {
+  const timeData = getStudyTimeData()
+  const today    = new Date().toISOString().split('T')[0]
+
+  // Build 7-day array ending today
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000)
+    const key = d.toISOString().split('T')[0]
+    const secs = timeData[key] ?? 0
+    const label = d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)
+    return { key, label, secs, isToday: key === today }
+  })
+
+  const maxSecs = Math.max(...days.map(d => d.secs), 1)
+  const todaySecs = timeData[today] ?? 0
+  const weekSecs  = days.reduce((s, d) => s + d.secs, 0)
+
+  return (
+    <div style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:'var(--r-xl)', padding:'20px 22px' }}>
+      {/* Numbers row */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
+        <div>
+          <div style={{ fontSize:9, letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:5 }}>Today</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:24, letterSpacing:'-0.5px', color:'var(--accent)', lineHeight:1 }}>{fmtMins(todaySecs)}</div>
+          <div style={{ fontSize:11, color:'var(--text-3)', marginTop:3, fontWeight:300 }}>study time</div>
+        </div>
+        <div>
+          <div style={{ fontSize:9, letterSpacing:'2px', textTransform:'uppercase', color:'var(--text-3)', marginBottom:5 }}>This week</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:24, letterSpacing:'-0.5px', color:'var(--green)', lineHeight:1 }}>{fmtMins(weekSecs)}</div>
+          <div style={{ fontSize:11, color:'var(--text-3)', marginTop:3, fontWeight:300 }}>total focus</div>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div style={{ display:'flex', alignItems:'flex-end', gap:5, height:44 }}>
+        {days.map(d => {
+          const h = maxSecs > 0 ? Math.max(3, (d.secs / maxSecs) * 44) : 3
+          return (
+            <div key={d.key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+              <div title={fmtMins(d.secs)}
+                style={{ width:'100%', height:h, borderRadius:4, transition:'height .5s cubic-bezier(0.22,1,0.36,1)',
+                  background: d.isToday
+                    ? 'linear-gradient(180deg,var(--accent),#7b6cf6)'
+                    : d.secs > 0 ? 'var(--text-4)' : 'var(--text-4)',
+                  opacity: d.secs > 0 ? 1 : 0.3,
+                }} />
+              <div style={{ fontSize:9, color: d.isToday ? 'var(--accent)' : 'var(--text-3)', fontWeight: d.isToday ? 600 : 400 }}>{d.label}</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Main dashboard ────────────────────────────────────────────
-export default function Dashboard({ setPage }: { setPage: (p: Page) => void }) {
+export default function Dashboard({ material, setPage }: { material: any; setPage: (p: Page) => void }) {
   const { toggle, theme } = useTheme()
   const { user }          = useUser()
 
@@ -615,18 +684,7 @@ export default function Dashboard({ setPage }: { setPage: (p: Page) => void }) {
           {/* ── Right col ── */}
           <div className="home-col" style={{ paddingTop: 4 }}>
             <PomodoroWidget />
-            <div className="stat-grid">
-              <div className="stat-card">
-                <div className="stat-lbl">Today</div>
-                <div className="stat-value" style={{ color: 'var(--accent)' }}>—</div>
-                <div className="stat-sub">study time</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-lbl">This week</div>
-                <div className="stat-value" style={{ color: 'var(--green)' }}>—</div>
-                <div className="stat-sub">total focus</div>
-              </div>
-            </div>
+            <StudyStats />
           </div>
         </div>
       </div>
