@@ -127,6 +127,7 @@ function PdfPage({ bookId, buf, pageNum, scale = 1.4, onLoad }: {
 function EbookPage({ bookId, buf, pageNum, totalPages, onLoad }: {
   bookId: string; buf: ArrayBuffer; pageNum: number; totalPages: number; onLoad?: (n: number) => void
 }) {
+  void totalPages
   const [items,    setItems]    = useState<{text:string;heading:boolean}[]>([])
   const [loading,  setLoading]  = useState(true)
   const [hasImages, setHasImages] = useState(false)

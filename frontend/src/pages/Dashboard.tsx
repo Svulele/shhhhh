@@ -554,7 +554,7 @@ function StudyStats() {
 }
 
 // ── Main dashboard ────────────────────────────────────────────
-export default function Dashboard({ material, setPage }: { material: any; setPage: (p: Page) => void }) {
+export default function Dashboard({ material: _material, setPage }: { material: any; setPage: (p: Page) => void }) {
   const { toggle, theme } = useTheme()
   const { user }          = useUser()
 

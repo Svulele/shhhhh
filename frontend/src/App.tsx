@@ -7,7 +7,7 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/StudyPlan'
+import StudyPlan   from './pages/Studyplan'
 import { registerSW } from './pwa'
 import './App.css'
 

@@ -1,5 +1,31 @@
+# Python
 venv/
-node_modules/
+__pycache__/
+*.pyc
+*.pyo
 .env
+*.env
+
+# Node
+node_modules/
+frontend/node_modules/
 dist/
+frontend/dist/
+.next/
+
+# Backend local data
+backend/key.env
+backend/*.db
+backend/uploads/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env.local
+.env.production

@@ -75,6 +75,9 @@ Respond ONLY with a JSON array, no markdown, no extra text:
     bookId: book.id, bookTitle: book.title,
     front: c.front, back: c.back,
     fromPage, toPage, difficulty: null,
+    nextReview: 0,
+    interval: 1,
+    reviewCount: 0,
   }))
 }
 
@@ -230,6 +233,8 @@ export default function Flashcards() {
     due:      reviewQ.length,
     mastered: filtered.filter(c => c.difficulty === 'easy' && c.reviewCount && c.reviewCount >= 3).length,
     unseen:   filtered.filter(c => !c.nextReview || c.nextReview === 0).length,
+    easy:     filtered.filter(c => c.difficulty === 'easy').length,
+    hard:     filtered.filter(c => c.difficulty === 'hard').length,
   }
 
   const rate = (difficulty: 'easy' | 'medium' | 'hard') => {
