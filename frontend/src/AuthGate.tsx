@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, syncProfile, recordStudyDay, getStreak } from './supabase'
+import { supabase, isCloudModeEnabled, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, syncProfile, recordStudyDay, getStreak } from './supabase'
 import type { User } from '@supabase/supabase-js'
 
 export { recordStudyDay, getStreak }
@@ -127,6 +127,11 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [busy,     setBusy]     = useState(false)
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       if (u) {
@@ -266,6 +271,12 @@ export default function AuthGate({ children }: AuthGateProps) {
 
         {error && (
           <div style={{ fontSize: 12, color: '#f87171', marginBottom: 10, lineHeight: 1.5 }}>{error}</div>
+        )}
+
+        {!isCloudModeEnabled && (
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10, lineHeight: 1.5, textAlign: 'center' }}>
+            Cloud sync is temporarily unavailable. You can still use the app in local-only mode.
+          </div>
         )}
 
         <button onClick={handleEmail} disabled={busy} style={{

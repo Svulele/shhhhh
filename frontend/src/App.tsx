@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from 'react'
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
 import AuthGate, { recordStudyDay } from './AuthGate'
 import type { User } from '@supabase/supabase-js'
 import Dashboard from './pages/Dashboard'
@@ -116,6 +116,56 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
   )
 }
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  override state: { error: Error | null } = { error: null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          padding: 24,
+          background: 'var(--bg)',
+        }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--text-1)' }}>
+            Something went wrong
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', textAlign: 'center', maxWidth: 300 }}>
+            {this.state.error.message}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 24px',
+              borderRadius: 999,
+              background: 'var(--accent-soft)',
+              border: '0.5px solid var(--border-active)',
+              color: 'var(--accent)',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            Reload app
+          </button>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 export default function App() {
   // Check skip-auth flag (Continue without account)
   const skipAuth = localStorage.getItem('shh_skip_auth') === '1'
@@ -128,12 +178,18 @@ export default function App() {
   }, [])
 
   if (skipAuth) {
-    return <AppShell user={null} doSignOut={() => { localStorage.removeItem('shh_skip_auth'); window.location.reload() }} />
+    return (
+      <ErrorBoundary>
+        <AppShell user={null} doSignOut={() => { localStorage.removeItem('shh_skip_auth'); window.location.reload() }} />
+      </ErrorBoundary>
+    )
   }
 
   return (
-    <AuthGate>
-      {(user, doSignOut) => <AppShell user={user} doSignOut={doSignOut} />}
-    </AuthGate>
+    <ErrorBoundary>
+      <AuthGate>
+        {(user, doSignOut) => <AppShell user={user} doSignOut={doSignOut} />}
+      </AuthGate>
+    </ErrorBoundary>
   )
 }
