@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '../App'
 import { recordStudyDay } from '../supabase'
+import { API_BASE_URL } from '../config'
 
 interface Message { id:string; role:'user'|'assistant'; content:string; ts:number }
 interface Session  { id:string; title:string; messages:Message[]; createdAt:number; bookCtx?:string; vibe?:string }
@@ -125,23 +126,53 @@ Session summary: ${r.summary?.join(' ')}`
   return sys.trim()
 }
 
-async function callAI(msgs:Message[], sys:string, onChunk:(t:string)=>void, onDone:()=>void, onErr:(e:string)=>void) {
+function mapVibeToBackendPersonality(vibe: string): 'friendly' | 'strict' | 'calm' | 'hype' {
+  if (vibe === 'strict') return 'strict'
+  if (vibe === 'chill') return 'calm'
+  return 'friendly'
+}
+
+async function callAI(
+  msgs: Message[],
+  sys: string,
+  vibe: string,
+  userName: string,
+  onChunk: (t: string) => void,
+  onDone: () => void,
+  onErr: (e: string) => void
+) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1024, system:sys, messages:msgs.map(m=>({role:m.role,content:m.content})) })
+    const lastUserMessage = [...msgs].reverse().find(m => m.role === 'user')?.content ?? ''
+    const transcript = msgs
+      .slice(-8)
+      .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+      .join('\n')
+
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        message: transcript || lastUserMessage,
+        material_context: sys,
+        personality: mapVibeToBackendPersonality(vibe),
+        user_name: userName || 'Friend',
+      })
     })
-    const data = await res.json()
-    if (data.error) {
-      const msg = data.error.message??''
-      onErr(msg.match(/credit|billing|quota/i)?'API usage limit reached. Visit console.anthropic.com to top up.':`API error: ${msg}`)
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      const msg = data?.detail ?? data?.error?.message ?? `Request failed with status ${res.status}`
+      onErr(`Error: ${msg}`)
       return
     }
-    const text = (data.content??[]).map((c:any)=>c.text??'').join('')
+    const text = data?.reply ?? ''
+    if (!text) {
+      onErr('Error: AI returned an empty response.')
+      return
+    }
     const words = text.split(' ')
     for (let i=0;i<words.length;i++) { await new Promise(r=>setTimeout(r,14)); onChunk((i===0?'':' ')+words[i]) }
     onDone()
-  } catch(e:any) { onErr(e?.message?.includes('fetch')?'Network error — check your connection.':`Error: ${e?.message}`) }
+  } catch(e:any) { onErr(e?.message?.includes('fetch')?'Network error — could not reach the backend.':`Error: ${e?.message}`) }
 }
 
 function speak(text:string) {
@@ -278,7 +309,7 @@ export default function Chat({ material }:{ material:any }) {
     setMessages(m=>[...m,aiMsg]); setStreaming(true); setStreamId(aiId)
 
     let full = ''
-    await callAI(updated,sys,
+    await callAI(updated,sys,curVibe,p.name || 'Friend',
       chunk=>{ full+=chunk; setMessages(m=>m.map(x=>x.id===aiId?{...x,content:full}:x)) },
       ()=>{ setStreaming(false); setStreamId(null); const fin=[...updated,{...aiMsg,content:full}]; setMessages(fin); setSessions(prev=>prev.map(s=>s.id===sid?{...s,messages:fin,title:content.slice(0,40)}:s)) },
       err=>{ setStreaming(false); setStreamId(null); setError(err); setMessages(m=>m.filter(x=>x.id!==aiId)) }

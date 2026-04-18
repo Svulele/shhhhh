@@ -4,7 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase env vars are missing. Running in local-only mode until VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.')
+  console.warn('Supabase env vars are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env, then restart the Vite dev server. Running in local-only mode for now.')
 }
 
 export const supabase = supabaseUrl && supabaseAnonKey
