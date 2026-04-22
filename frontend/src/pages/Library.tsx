@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Page } from '../App'
+import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book {
@@ -357,13 +358,19 @@ function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: n
 // ── AI recap ──────────────────────────────────────────────────
 async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }] })
+      body: JSON.stringify({
+        message: `The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}`,
+        personality: 'friendly',
+        user_name: 'Student',
+      })
     })
-    const data = await res.json()
-    if (data.error) throw new Error(data.error.message)
-    const p = JSON.parse((data.content??[]).map((c:any)=>c.text??'').join('').replace(/```json|```/g,'').trim())
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.detail ?? data?.error?.message ?? `Request failed with status ${res.status}`)
+    const text = data?.reply ?? ''
+    if (!text) throw new Error('AI returned an empty response')
+    const p = JSON.parse(text.replace(/```json|```/g,'').trim())
     return {bookId:book.id,fromPage,toPage,summary:p.summary,questions:p.questions}
   } catch {
     return {bookId:book.id,fromPage,toPage,summary:[`You covered pages ${fromPage}–${toPage}.`,'Key ideas noted.','Keep going.'],questions:['What was the main idea?','How does it connect to what came before?']}

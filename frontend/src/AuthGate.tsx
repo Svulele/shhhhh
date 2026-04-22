@@ -172,6 +172,10 @@ export default function AuthGate({ children }: AuthGateProps) {
   }
 
   const handleEmail = async () => {
+    if (!isCloudModeEnabled) {
+      setError('Cloud sign-in is unavailable right now. Use local-only mode below.')
+      return
+    }
     if (!email.trim() || !password.trim()) { setError('Please enter email and password.'); return }
     setBusy(true); setError(null)
     try {
@@ -184,6 +188,10 @@ export default function AuthGate({ children }: AuthGateProps) {
   }
 
   const handleGoogle = async () => {
+    if (!isCloudModeEnabled) {
+      setError('Cloud sign-in is unavailable right now. Use local-only mode below.')
+      return
+    }
     setBusy(true); setError(null)
     try { await signInWithGoogle() }
     catch (e: any) { setError(e.message); setBusy(false) }
@@ -229,13 +237,13 @@ export default function AuthGate({ children }: AuthGateProps) {
         </div>
 
         {/* Google */}
-        <button onClick={handleGoogle} disabled={busy} style={{
+        <button onClick={handleGoogle} disabled={busy || !isCloudModeEnabled} style={{
           width: '100%', padding: 12, borderRadius: 12,
           border: '0.5px solid var(--border)', background: 'var(--bg-card)',
           color: 'var(--text-1)', fontSize: 14, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'var(--font-body)',
+          cursor: busy || !isCloudModeEnabled ? 'default' : 'pointer', fontFamily: 'var(--font-body)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          marginBottom: 16, transition: 'all .2s', opacity: busy ? 0.6 : 1,
+          marginBottom: 16, transition: 'all .2s', opacity: busy || !isCloudModeEnabled ? 0.6 : 1,
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -279,12 +287,12 @@ export default function AuthGate({ children }: AuthGateProps) {
           </div>
         )}
 
-        <button onClick={handleEmail} disabled={busy} style={{
+        <button onClick={handleEmail} disabled={busy || !isCloudModeEnabled} style={{
           width: '100%', padding: 12, borderRadius: 12,
           background: 'linear-gradient(135deg,var(--accent),#7b6cf6)',
           border: 'none', color: 'white', fontSize: 14, fontWeight: 500,
-          cursor: busy ? 'default' : 'pointer', fontFamily: 'var(--font-body)',
-          boxShadow: '0 4px 18px var(--accent-glow)', opacity: busy ? 0.6 : 1,
+          cursor: busy || !isCloudModeEnabled ? 'default' : 'pointer', fontFamily: 'var(--font-body)',
+          boxShadow: '0 4px 18px var(--accent-glow)', opacity: busy || !isCloudModeEnabled ? 0.6 : 1,
           transition: 'all .2s', marginBottom: 16,
         }}>
           {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}

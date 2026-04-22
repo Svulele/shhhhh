@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
+import { API_BASE_URL } from '../config'
+import OnboardingTour, { type Profile } from './Onboardingtour'
 
 // ── 30 rotating quotes ────────────────────────────────────────
 const QUOTES = [
@@ -56,175 +58,6 @@ const getQuoteOfDay = () => {
 
   localStorage.setItem('shh_quote_state', JSON.stringify({ date: today, idx, seen: newSeen }))
   return QUOTES[idx]
-}
-
-// ── Onboarding ────────────────────────────────────────────────
-interface Profile {
-  name: string; ai: string; vibe: string; goals: string[]
-  location: string; lat: number | null; lon: number | null; onboarded: boolean
-}
-const AI_OPTS = [
-  { id: 'claude', label: 'Claude',  sub: 'Anthropic'    },
-  { id: 'gpt4',   label: 'GPT-4',   sub: 'OpenAI'       },
-  { id: 'gemini', label: 'Gemini',  sub: 'Google'        },
-  { id: 'llama',  label: 'LLaMA',   sub: 'Open source'  },
-]
-const GOAL_OPTS = ['Exams', 'Research', 'Personal growth', 'Language', 'Coding', 'Creative writing']
-const VIBES = [
-  { id: 'gentle',   e: '🌱', label: 'Gentle',   desc: 'Warm, patient, never judges.' },
-  { id: 'balanced', e: '⚡', label: 'Balanced',  desc: 'Supportive but keeps you accountable.' },
-  { id: 'strict',   e: '🎯', label: 'Strict',    desc: 'Direct and results-focused. No fluff.' },
-  { id: 'chill',    e: '🌊', label: 'Chill',     desc: 'Laid-back study companion. No pressure.' },
-]
-
-function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
-  const [step, setStep]   = useState(0)
-  const [name, setName]   = useState('')
-  const [ai, setAi]       = useState('claude')
-  const [vibe, setVibe]   = useState('balanced')
-  const [goals, setGoals] = useState<string[]>([])
-  const [locSt, setLocSt] = useState<'idle'|'asking'|'done'|'denied'>('idle')
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
-  const [locName, setLocName] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { if (step === 0) setTimeout(() => inputRef.current?.focus(), 200) }, [step])
-
-  const toggleGoal = (g: string) =>
-    setGoals(p => p.includes(g) ? p.filter(x => x !== g) : [...p, g])
-
-  const canNext = [name.trim().length > 0, true, true, goals.length > 0, true][step]
-
-  const requestLoc = () => {
-    setLocSt('asking')
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const { latitude: lat, longitude: lon } = pos.coords
-      setCoords({ lat, lon })
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
-        const d = await r.json()
-        setLocName(d.address?.city || d.address?.town || d.address?.state || 'your area')
-      } catch { setLocName('your area') }
-      setLocSt('done')
-    }, () => setLocSt('denied'))
-  }
-
-  const finish = () => {
-    const p: Profile = {
-      name, ai, vibe, goals,
-      location: locName, lat: coords?.lat ?? null, lon: coords?.lon ?? null,
-      onboarded: true,
-    }
-    localStorage.setItem('shh_profile', JSON.stringify(p))
-    onDone(p)
-  }
-
-  const STEPS = ['name', 'ai', 'vibe', 'goals', 'location']
-
-  return (
-    <div className="onboard-wrap">
-      <div className="onboard-card">
-        {/* Step dots */}
-        <div style={{ display: 'flex', gap: 7, marginBottom: 32 }}>
-          {STEPS.map((_, i) => (
-            <div key={i} className={`step-dot${i <= step ? ' active' : ''}`} />
-          ))}
-        </div>
-
-        {step === 0 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Welcome</p>
-            <p className="onboard-q">What should I call you?</p>
-            <input ref={inputRef} value={name} onChange={e => setName(e.target.value)}
-              placeholder="Your name…" style={{ fontSize: 18, fontWeight: 300, padding: '14px 18px' }}
-              onKeyDown={e => e.key === 'Enter' && canNext && setStep(1)} />
-          </div>
-        )}
-
-        {step === 1 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Your AI</p>
-            <p className="onboard-q">Which AI will you study with?</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {AI_OPTS.map(o => (
-                <button key={o.id} className={`ai-card${ai === o.id ? ' active' : ''}`} onClick={() => setAi(o.id)}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{o.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 300 }}>{o.sub}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Your style</p>
-            <p className="onboard-q">What kind of study buddy do you want?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {VIBES.map(v => (
-                <button key={v.id} onClick={() => setVibe(v.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
-                  borderRadius: 14, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s',
-                  background: vibe === v.id ? 'var(--accent-soft)' : 'var(--bg-card)',
-                  border: `0.5px solid ${vibe === v.id ? 'var(--border-active)' : 'var(--border)'}`,
-                }}>
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{v.e}</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)', marginBottom: 2 }}>{v.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 300 }}>{v.desc}</div>
-                  </div>
-                  {vibe === v.id && <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Focus areas</p>
-            <p className="onboard-q">What are you studying for?</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
-              {GOAL_OPTS.map(g => (
-                <button key={g} className={`goal-chip${goals.includes(g) ? ' active' : ''}`} onClick={() => toggleGoal(g)}>{g}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Almost there</p>
-            <p className="onboard-q">Can I see your location?</p>
-            <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 24, fontWeight: 300, lineHeight: 1.6 }}>
-              Only used for weather on your home screen. Never shared.
-            </p>
-            {locSt === 'idle' && (
-              <button className="btn btn-primary" onClick={requestLoc} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
-                Share location
-              </button>
-            )}
-            {locSt === 'asking' && <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Asking…</p>}
-            {locSt === 'done'   && <p style={{ color: 'var(--green)', fontSize: 14 }}>✓ Got it — {locName}</p>}
-            {locSt === 'denied' && <p style={{ color: '#f87171', fontSize: 13 }}>No problem, we'll skip weather.</p>}
-          </div>
-        )}
-
-        {/* Nav row */}
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 32, paddingTop: 24, borderTop: '0.5px solid var(--border)' }}>
-          {step > 0 && (
-            <button className="btn btn-ghost" style={{ padding: '8px 18px' }} onClick={() => setStep(s => s - 1)}>Back</button>
-          )}
-          <div style={{ flex: 1 }} />
-          {step < 4
-            ? <button className="btn btn-primary" style={{ opacity: canNext ? 1 : 0.35, cursor: canNext ? 'pointer' : 'default' }} onClick={() => canNext && setStep(s => s + 1)}>Continue</button>
-            : <button className="btn btn-primary" onClick={finish}>Let's go →</button>
-          }
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── Ambient + bell via Web Audio (no external files) ──────────
@@ -326,13 +159,18 @@ function PomodoroWidget() {
     setAiLoad(true)
     const p = (() => { try { return JSON.parse(localStorage.getItem('shh_profile') ?? '{}') } catch { return {} } })()
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch(`${API_BASE_URL}/api/chat/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 150,
-          messages: [{ role: 'user', content: `Goals: ${p.goals?.join(', ')||'study'}. Vibe: ${p.vibe||'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}` }] })
+        body: JSON.stringify({
+          message: `Goals: ${p.goals?.join(', ')||'study'}. Vibe: ${p.vibe||'balanced'}. Suggest Pomodoro mins. JSON only: {"work":25,"break":5}`,
+          personality: p.vibe === 'strict' ? 'strict' : p.vibe === 'chill' ? 'calm' : 'friendly',
+          user_name: p.name || 'Student',
+        })
       })
-      const d = await res.json()
-      const t = (d.content??[]).map((c:any)=>c.text??'').join('')
+      const d = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(d?.detail ?? d?.error?.message ?? `Request failed with status ${res.status}`)
+      const t = d?.reply ?? ''
+      if (!t) throw new Error('AI returned an empty response')
       const parsed = JSON.parse(t.replace(/```json|```/g,'').trim())
       setCwMins(parsed.work ?? 25); setCbMins(parsed.break ?? 5); setShowCfg(true)
     } catch {}
@@ -579,18 +417,20 @@ export default function Dashboard({ material: _material, setPage }: { material: 
   // Sync streak from Supabase if logged in, else use local
   useEffect(() => {
     if (user) {
-      getStreak(user.id).then(s => {
-        setStreak(s)
-        localStorage.setItem('shh_streak', String(s))
-        // Record today as a study day when they open the dashboard
-        recordStudyDay(user.id).catch(console.warn)
-      }).catch(() => setStreak(Number(localStorage.getItem('shh_streak') ?? 0)))
+      recordStudyDay(user.id)
+        .then(() => getStreak(user.id))
+        .then(s => {
+          setStreak(s)
+          localStorage.setItem('shh_streak', String(s))
+        })
+        .catch(() => setStreak(Number(localStorage.getItem('shh_streak') ?? 0)))
     } else {
+      recordStudyDay().catch(console.warn)
       setStreak(Number(localStorage.getItem('shh_streak') ?? 0))
     }
   }, [user])
 
-  if (!profile?.onboarded) return <Onboarding onDone={p => setProfile(p)} />
+  if (!profile?.onboarded) return <OnboardingTour onDone={setProfile} />
 
   const firstName = profile.name.split(' ')[0]
 

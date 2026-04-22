@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from database import get_db
 from models import Progress, StudySession
 
@@ -17,13 +19,19 @@ class SessionLog(BaseModel):
 
 @router.post("/update")
 def update_progress(data: ProgressUpdate, db: Session = Depends(get_db)):
-    prog = db.query(Progress).filter(Progress.material_id == data.material_id).first()
-    if prog:
-        prog.current_page = data.current_page
-        prog.completion_percent = data.completion_percent
-    else:
-        prog = Progress(**data.dict())
-        db.add(prog)
+    stmt = sqlite_insert(Progress).values(
+        material_id=data.material_id,
+        current_page=data.current_page,
+        completion_percent=data.completion_percent,
+    ).on_conflict_do_update(
+        index_elements=[Progress.material_id],
+        set_={
+            "current_page": data.current_page,
+            "completion_percent": data.completion_percent,
+            "last_read": func.now(),
+        },
+    )
+    db.execute(stmt)
     db.commit()
     return {"status": "updated"}
 

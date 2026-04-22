@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Page } from '../App'
+import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface PlanItem {
@@ -20,6 +21,9 @@ interface DayPlan {
   items: PlanItem[]
   generatedAt: number
 }
+
+let pendingPlanDate: string | null = null
+let pendingPlanPromise: Promise<DayPlan> | null = null
 
 // ── Storage ───────────────────────────────────────────────────
 const PLAN_KEY = 'shh_daily_plan'
@@ -87,15 +91,11 @@ Time of day: ${greeting.toLowerCase()}
 `.trim()
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: `You are a study planner. Based on this context, create a realistic daily study plan.
+        message: `You are a study planner. Based on this context, create a realistic daily study plan.
 
 ${context}
 
@@ -118,14 +118,18 @@ Respond ONLY with JSON, no markdown:
       "duration": 25
     }
   ]
-}`
-        }]
+}`,
+        personality: profile.vibe === 'strict' ? 'strict' : profile.vibe === 'chill' ? 'calm' : 'friendly',
+        user_name: profile.name || 'Student',
       })
     })
 
-    const data   = await res.json()
-    if (data.error) throw new Error(data.error.message)
-    const text   = (data.content ?? []).map((c: any) => c.text ?? '').join('')
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      throw new Error(data?.detail ?? data?.error?.message ?? `Request failed with status ${res.status}`)
+    }
+    const text = data?.reply ?? ''
+    if (!text) throw new Error('AI returned an empty response')
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
 
     const pageMap: Record<string, Page> = {
@@ -196,6 +200,19 @@ Respond ONLY with JSON, no markdown:
   }
 }
 
+function getPlanForToday(): Promise<DayPlan> {
+  const today = new Date().toISOString().split('T')[0]
+  if (pendingPlanPromise && pendingPlanDate === today) return pendingPlanPromise
+
+  pendingPlanDate = today
+  pendingPlanPromise = generatePlan().finally(() => {
+    pendingPlanDate = null
+    pendingPlanPromise = null
+  })
+
+  return pendingPlanPromise
+}
+
 // ── Type icons + colours ──────────────────────────────────────
 const TYPE_CONFIG = {
   read:   { emoji: '📖', color: '#b07ef7', bg: 'rgba(160,100,220,.1)'  },
@@ -227,7 +244,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
   const generate = async () => {
     setLoading(true); setError(null)
     try {
-      const p = await generatePlan()
+      const p = await getPlanForToday()
       savePlan(p); setPlan(p)
     } catch (e: any) {
       setError('Could not generate plan. Check your connection.')

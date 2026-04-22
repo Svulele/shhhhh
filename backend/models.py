@@ -22,7 +22,7 @@ class Material(Base):
 class Progress(Base):
     __tablename__ = "progress"
     id = Column(Integer, primary_key=True)
-    material_id = Column(Integer)
+    material_id = Column(Integer, unique=True, index=True)
     current_page = Column(Integer, default=0)
     completion_percent = Column(Float, default=0.0)
     last_read = Column(DateTime, server_default=func.now())

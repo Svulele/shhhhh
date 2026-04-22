@@ -84,7 +84,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
 
   // Record study activity whenever user navigates to an active page
   const recordStudy = () => {
-    if (user) recordStudyDay(user.id).catch(console.warn)
+    recordStudyDay(user?.id).catch(console.warn)
   }
 
   const navigate = (p: Page) => {

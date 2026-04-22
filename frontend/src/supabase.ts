@@ -174,10 +174,14 @@ export async function loadCloudProfile(userId: string): Promise<CloudProfileInpu
   return data as CloudProfileInput | null
 }
 
-export async function recordStudyDay(userId: string) {
+export async function recordStudyDay(userId?: string) {
   if (!supabase) {
     recordLocalStudyDay()
     return
+  }
+
+  if (!userId) {
+    throw new Error('A user id is required when cloud sync is enabled.')
   }
 
   const today = new Date().toISOString().slice(0, 10)

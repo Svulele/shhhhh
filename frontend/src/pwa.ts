@@ -47,7 +47,7 @@ function scheduleStreakReminder(reg: ServiceWorkerRegistration) {
     if (!studiedToday && Notification.permission === 'granted') {
       await reg.showNotification('Shhhhh 🔥', {
         body: "You haven't studied yet today — don't break your streak!",
-        icon: '/icon-192.png',
+        icon: '/app-icon.svg',
         tag: 'streak-reminder',
       })
     }

@@ -47,8 +47,8 @@ self.addEventListener('push', (e) => {
   const body    = data.body    ?? "Don't break your streak — study something today! 🔥"
   const options = {
     body,
-    icon:  '/icon-192.png',
-    badge: '/icon-192.png',
+    icon:  '/app-icon.svg',
+    badge: '/app-icon.svg',
     tag:   'streak-reminder',
     renotify: false,
     data: { url: data.url ?? '/' },

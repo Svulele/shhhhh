@@ -30,6 +30,15 @@ const persist = (p: Profile) => localStorage.setItem('shh_profile', JSON.stringi
 const getBooks = () => { try { return JSON.parse(localStorage.getItem('shh_books')?? '[]') } catch { return [] } }
 const getStreak = () => Number(localStorage.getItem('shh_streak') ?? 0)
 
+function deleteLocalPdfStore(): Promise<void> {
+  return new Promise((resolve) => {
+    const req = indexedDB.deleteDatabase('shh_pdf_db')
+    req.onsuccess = () => resolve()
+    req.onerror = () => resolve()
+    req.onblocked = () => resolve()
+  })
+}
+
 type Tab = 'profile' | 'ai' | 'data'
 
 export default function Settings({ doSignOut }: { doSignOut?: () => void }) {
@@ -84,9 +93,11 @@ export default function Settings({ doSignOut }: { doSignOut?: () => void }) {
     )
   }
 
-  const clearAll = () => {
+  const clearAll = async () => {
     if (!confirm('Delete all books, notes, chats and settings?')) return
-    localStorage.clear(); window.location.reload()
+    localStorage.clear()
+    await deleteLocalPdfStore()
+    window.location.reload()
   }
 
   const inp: CSSProperties = {
