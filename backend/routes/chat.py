@@ -14,6 +14,9 @@ class ChatRequest(BaseModel):
     personality: Optional[str] = "friendly"
     material_context: Optional[str] = ""
     user_name: Optional[str] = "Sbulele"
+    system_prompt: Optional[str] = ""
+    history: Optional[list[dict[str, str]]] = None
+    max_tokens: Optional[int] = 450
 
 PERSONALITIES = {
     "friendly": "You are a friendly, warm and encouraging study partner.",
@@ -125,7 +128,16 @@ async def chat(request: ChatRequest):
         if request.material_context:
             context = f"\n\nThe student is studying this material:\n{request.material_context[:3000]}"
 
-        system = f"{personality} The student's name is {request.user_name}. Help them study, answer questions, quiz them, or motivate them. Keep answers clear and concise.{context}"
+        system = request.system_prompt.strip() if request.system_prompt else ""
+        if not system:
+            system = f"{personality} The student's name is {request.user_name}. Help them study, answer questions, quiz them, or motivate them. Keep answers clear and concise.{context}"
+
+        history: list[dict[str, str]] = []
+        for item in request.history or []:
+            role = item.get("role", "").strip()
+            content = item.get("content", "").strip()
+            if role in {"user", "assistant"} and content:
+                history.append({"role": role, "content": content[:6000]})
 
         url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -151,9 +163,10 @@ async def chat(request: ChatRequest):
                         "model": model,
                         "messages": [
                             {"role": "system", "content": system},
+                            *history,
                             {"role": "user", "content": request.message},
                         ],
-                        "max_tokens": 450,
+                        "max_tokens": max(64, min(request.max_tokens or 450, 2000)),
                     }
                     response = await client.post(url, json=payload, headers=headers)
                     print(f"[CHAT] Model={model} Status={response.status_code}")

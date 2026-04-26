@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '../App'
 import { recordStudyDay } from '../supabase'
+import { API_BASE_URL } from '../config'
 
 // ── Types ──────────────────────────────────────────────────────
 interface Msg  { id:string; role:'user'|'assistant'; content:string; ts:number }
@@ -37,15 +38,27 @@ function getReadCtx() {
 async function updateMem(userMsg:string, aiReply:string) {
   const cur=loadM(); if(!userMsg.trim()||!aiReply.trim()) return
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(`${API_BASE_URL}/api/chat/`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:
-`Extract 0–3 NEW study facts (learning style, struggles, goals, book preferences). Known: ${cur.facts.length?cur.facts.map(f=>`- ${f}`).join('\n'):'none'}
-Exchange — Student: ${userMsg.slice(0,200)} | AI: ${aiReply.slice(0,200)}
-Reply ONLY with JSON array (empty if nothing new): ["fact 1","fact 2"]`}]})
+      body:JSON.stringify({
+        message:`Extract 0-3 new study facts from this exchange and respond with JSON array only.`,
+        personality:'friendly',
+        user_name:'Memory',
+        max_tokens:200,
+        system_prompt:`Extract 0-3 NEW study facts about the student (learning style, struggles, goals, book preferences).
+Known facts:
+${cur.facts.length?cur.facts.map(f=>`- ${f}`).join('\n'):'none'}
+
+Conversation:
+Student: ${userMsg.slice(0,400)}
+AI: ${aiReply.slice(0,400)}
+
+Return ONLY a JSON array. Example: ["prefers short quizzes"]`,
+      })
     })
     const data=await res.json()
-    const fresh:string[]=JSON.parse((data.content??[]).map((c:any)=>c.text??'').join('').replace(/```json|```/g,'').trim())
+    const text=(data?.reply??'').replace(/```json|```/g,'').trim()
+    const fresh:string[]=JSON.parse(text||'[]')
     if(!fresh.length) return
     const merged=[...cur.facts]
     fresh.forEach(f=>{if(!merged.some(e=>e.toLowerCase().includes(f.toLowerCase().slice(0,20))))merged.push(f)})
@@ -93,13 +106,23 @@ RULES: Never ask "what are you studying?" — you know from context. Reference b
 // ── AI call ────────────────────────────────────────────────────
 async function callAI(msgs:Msg[],sys:string,onChunk:(t:string)=>void,onDone:()=>void,onErr:(e:string)=>void) {
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const history=msgs.slice(0,-1).map(m=>({role:m.role,content:m.content}))
+    const latest=msgs[msgs.length-1]
+    const res=await fetch(`${API_BASE_URL}/api/chat/`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,system:sys,messages:msgs.map(m=>({role:m.role,content:m.content}))})
+      body:JSON.stringify({
+        message:latest?.content??'',
+        personality:'friendly',
+        user_name:getProf().name||'Student',
+        system_prompt:sys,
+        history,
+        max_tokens:1024,
+      })
     })
     const data=await res.json()
-    if(data.error){onErr(data.error.message?.match(/credit|billing|quota/i)?'API limit reached.':data.error.message);return}
-    const text=(data.content??[]).map((c:any)=>c.text??'').join('')
+    if(!res.ok){onErr((data?.detail??'AI request failed').match(/credit|billing|quota/i)?'API limit reached.':data?.detail??'AI request failed');return}
+    const text=(data?.reply??'').trim()
+    if(!text){onErr('AI returned an empty response.');return}
     const words=text.split(' ')
     for(let i=0;i<words.length;i++){await new Promise(r=>setTimeout(r,14));onChunk((i===0?'':' ')+words[i])}
     onDone()

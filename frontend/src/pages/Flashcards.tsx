@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book { id: string; title: string; author: string; totalPages: number; currentPage: number }
@@ -43,15 +44,15 @@ const loadBooks = (): Book[] => { try { return JSON.parse(localStorage.getItem('
 async function generateFromSession(
   book: Book, fromPage: number, toPage: number
 ): Promise<Omit<Card, 'id' | 'createdAt'>[]> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${API_BASE_URL}/api/chat/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{
-        role: 'user',
-        content: `The reader just read pages ${fromPage}–${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
+      message: `Create flashcards for pages ${fromPage}-${toPage} of "${book.title}" by ${book.author}.`,
+      personality: 'friendly',
+      user_name: 'Student',
+      max_tokens: 1400,
+      system_prompt: `The reader just read pages ${fromPage}-${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
 
 Based on your knowledge of this book, create 6–8 flashcards that test the key ideas, concepts, terms, and arguments from that section.
 
@@ -63,13 +64,12 @@ Rules:
 - Don't create cards for things covered outside those pages
 
 Respond ONLY with a JSON array, no markdown, no extra text:
-[{"front":"…","back":"…"},…]`
-      }]
+[{"front":"...","back":"..."},...]`
     })
   })
   const data = await res.json()
-  if (data.error) throw new Error(data.error.message)
-  const text = (data.content ?? []).map((c: any) => c.text ?? '').join('')
+  if (!res.ok) throw new Error(data?.detail ?? 'Flashcard generation failed')
+  const text = (data?.reply ?? '').trim()
   const parsed: { front: string; back: string }[] = JSON.parse(text.replace(/```json|```/g, '').trim())
   return parsed.map(c => ({
     bookId: book.id, bookTitle: book.title,
