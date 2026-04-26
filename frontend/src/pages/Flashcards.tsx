@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book { id: string; title: string; author: string; totalPages: number; currentPage: number }
@@ -44,11 +43,15 @@ const loadBooks = (): Book[] => { try { return JSON.parse(localStorage.getItem('
 async function generateFromSession(
   book: Book, fromPage: number, toPage: number
 ): Promise<Omit<Card, 'id' | 'createdAt'>[]> {
-  const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      message: `The reader just read pages ${fromPage}–${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `The reader just read pages ${fromPage}–${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
 
 Based on your knowledge of this book, create 6–8 flashcards that test the key ideas, concepts, terms, and arguments from that section.
 
@@ -60,23 +63,18 @@ Rules:
 - Don't create cards for things covered outside those pages
 
 Respond ONLY with a JSON array, no markdown, no extra text:
-[{"front":"...","back":"..."},...]`,
-      personality: 'friendly',
-      user_name: 'Student',
+[{"front":"…","back":"…"},…]`
+      }]
     })
   })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.detail ?? data?.error?.message ?? `Request failed with status ${res.status}`)
-  const text = data?.reply ?? ''
-  if (!text) throw new Error('AI returned an empty response')
+  const data = await res.json()
+  if (data.error) throw new Error(data.error.message)
+  const text = (data.content ?? []).map((c: any) => c.text ?? '').join('')
   const parsed: { front: string; back: string }[] = JSON.parse(text.replace(/```json|```/g, '').trim())
   return parsed.map(c => ({
     bookId: book.id, bookTitle: book.title,
     front: c.front, back: c.back,
     fromPage, toPage, difficulty: null,
-    nextReview: 0,
-    interval: 1,
-    reviewCount: 0,
   }))
 }
 
@@ -232,8 +230,6 @@ export default function Flashcards() {
     due:      reviewQ.length,
     mastered: filtered.filter(c => c.difficulty === 'easy' && c.reviewCount && c.reviewCount >= 3).length,
     unseen:   filtered.filter(c => !c.nextReview || c.nextReview === 0).length,
-    easy:     filtered.filter(c => c.difficulty === 'easy').length,
-    hard:     filtered.filter(c => c.difficulty === 'hard').length,
   }
 
   const rate = (difficulty: 'easy' | 'medium' | 'hard') => {
@@ -257,7 +253,7 @@ export default function Flashcards() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '-0.5px', color: 'var(--text-1)' }}>Flashcards</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
               {stats.total} card{stats.total !== 1 ? 's' : ''}
-              {stats.due > 0 ? ` · ${stats.due} due` : ' · all caught up ✓'}
+              {stats.total > 0 && (stats.due > 0 ? ` · ${stats.due} due` : ' · all caught up ✓')}
               {stats.unseen > 0 ? ` · ${stats.unseen} new` : ''}
             </div>
           </div>
