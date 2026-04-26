@@ -4,20 +4,22 @@ from typing import Optional
 import httpx
 import json
 import os
+import requests
 import time
 from pathlib import Path
 from json import JSONDecodeError
 
 router = APIRouter()
 
+class Message(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
-    message: str
-    personality: Optional[str] = "friendly"
-    material_context: Optional[str] = ""
-    user_name: Optional[str] = "Sbulele"
-    system_prompt: Optional[str] = ""
-    history: Optional[list[dict[str, str]]] = None
-    max_tokens: Optional[int] = 450
+    model: str = "anthropic/claude-sonnet-4-5"
+    max_tokens: int = 1024
+    system: str = ""
+    messages: list[Message]
 
 PERSONALITIES = {
     "friendly": "You are a friendly, warm and encouraging study partner.",
@@ -156,90 +158,40 @@ async def get_cached_free_models(client: httpx.AsyncClient, headers: dict[str, s
 
     return models
 
-@router.post("/")
-async def chat(request: ChatRequest):
-    api_key = load_api_key()
+@router.post("")
+def chat(request: ChatRequest):
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(
             status_code=400,
-            detail="No backend API key found. Add OPENROUTER_API_KEY to backend/key.env",
+            detail="No backend API key found. Set OPENROUTER_API_KEY in Render environment variables.",
         )
 
+    payload = {
+        "model": "anthropic/claude-sonnet-4-5",
+        "max_tokens": request.max_tokens,
+        "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+    }
+    if request.system:
+        payload["messages"] = [{"role": "system", "content": request.system}] + payload["messages"]
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://shhhhh-ten.vercel.app",
+        "X-Title": "Shhhhh Study Buddy",
+    }
+
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
     try:
-        personality = PERSONALITIES.get(request.personality, PERSONALITIES["friendly"])
+        data = response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="Invalid response from OpenRouter")
 
-        context = ""
-        if request.material_context:
-            context = f"\n\nThe student is studying this material:\n{request.material_context[:3000]}"
+    if response.status_code != 200:
+        detail = data.get("error") or data.get("detail") or response.text
+        raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
 
-        system = request.system_prompt.strip() if request.system_prompt else ""
-        if not system:
-            system = f"{personality} The student's name is {request.user_name}. Help them study, answer questions, quiz them, or motivate them. Keep answers clear and concise.{context}"
-
-        history: list[dict[str, str]] = []
-        for item in request.history or []:
-            role = item.get("role", "").strip()
-            content = item.get("content", "").strip()
-            if role in {"user", "assistant"} and content:
-                history.append({"role": role, "content": content[:6000]})
-
-        url = "https://openrouter.ai/api/v1/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:3000"),
-            "X-Title": "Study Buddy App"
-        }
-
-        # Try models in order - use working free models
-        models_to_try = [
-            "nvidia/nemotron-3-super-120b-a12b:free",
-            "qwen/qwen-2-7b-instruct:free",
-            "meta-llama/codellama-34b-instruct:free",
-        ]
-
-        async with httpx.AsyncClient(timeout=15) as client:
-            last_error = None
-            for model in models_to_try:
-                try:
-                    payload = {
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            *history,
-                            {"role": "user", "content": request.message},
-                        ],
-                        "max_tokens": max(64, min(request.max_tokens or 450, 2000)),
-                    }
-                    response = await client.post(url, json=payload, headers=headers)
-                    print(f"[CHAT] Model={model} Status={response.status_code}")
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        choices = data.get("choices", [])
-                        if choices and "message" in choices[0]:
-                            reply = choices[0]["message"].get("content", "")
-                            if reply:
-                                return {"reply": normalize_reply(reply, request)}
-                    else:
-                        error_text = response.text[:200]
-                        last_error = f"{model}: HTTP {response.status_code} - {error_text}"
-                        print(f"[CHAT] {last_error}")
-                        
-                except Exception as e:
-                    last_error = f"{model}: {str(e)}"
-                    print(f"[CHAT] Error with {model}: {str(e)}")
-                    continue
-
-            raise HTTPException(
-                status_code=502,
-                detail=f"No working models available. Last error: {last_error}",
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        print(f"[CHAT] Exception: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    return {
+        "content": [{"type": "text", "text": data["choices"][0]["message"]["content"]}]
+    }

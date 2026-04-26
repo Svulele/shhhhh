@@ -15,6 +15,8 @@ frontend/dist/
 backend/key.env
 backend/*.db
 backend/uploads/
+*.db
+uploads/
 
 .DS_Store
 Thumbs.db
