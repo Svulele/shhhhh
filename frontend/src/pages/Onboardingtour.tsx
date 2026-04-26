@@ -1,225 +1,265 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState, useEffect } from 'react'
+import type { Page } from '../App'
 
-export interface Profile {
-  name: string
-  ai: string
-  vibe: string
-  goals: string[]
-  location: string
-  lat: number | null
-  lon: number | null
-  onboarded: boolean
+const TOUR_KEY = 'shh_tour_done'
+
+interface TourStep {
+  page: Page | null        // navigate here when step advances (null = stay on home)
+  anchor: string | null    // data-tour attribute to spotlight
+  emoji: string
+  title: string
+  body: string
+  cta: string
 }
 
-const AI_OPTS = [
-  { id: 'claude', label: 'Claude', sub: 'Anthropic' },
-  { id: 'gpt4', label: 'GPT-4', sub: 'OpenAI' },
-  { id: 'gemini', label: 'Gemini', sub: 'Google' },
-  { id: 'llama', label: 'LLaMA', sub: 'Open source' },
+const STEPS: TourStep[] = [
+  {
+    page: null, anchor: null,
+    emoji: '👋',
+    title: "Welcome to Shhhhh",
+    body: "Your personal AI study buddy. It reads with you, quizzes you, and actually remembers you across sessions. Take a 30-second tour.",
+    cta: "Show me around →",
+  },
+  {
+    page: 'library', anchor: 'library',
+    emoji: '📚',
+    title: "Your Library",
+    body: "Upload any PDF — textbooks, notes, articles. Read it in clean ebook mode or original PDF. The AI always knows which page you're on.",
+    cta: "Got it",
+  },
+  {
+    page: 'chat', anchor: 'chat',
+    emoji: '🤖',
+    title: "Ask the AI",
+    body: "Ask anything about what you're studying. No need to explain — it already knows your book and page. It also remembers things about you over time.",
+    cta: "Nice",
+  },
+  {
+    page: 'flashcards', anchor: 'flashcards',
+    emoji: '🃏',
+    title: "Auto Flashcards",
+    body: "Cards are automatically created from every reading session. Rate them Hard, Okay, or Easy — the app decides when to show them again.",
+    cta: "Smart",
+  },
+  {
+    page: 'pomodoro', anchor: 'pomodoro',
+    emoji: '⏱',
+    title: "Focus Timer",
+    body: "Pomodoro sessions with ambient sounds — rain, forest, café, white noise. All in-browser. A bell plays when time is up.",
+    cta: "Let's go",
+  },
+  {
+    page: 'plan', anchor: 'plan',
+    emoji: '📅',
+    title: "Daily Plan",
+    body: "Every morning the AI builds a personalised study plan from your books, cards due, and study time this week. Tap any task to jump to it.",
+    cta: "Start studying →",
+  },
 ]
 
-const GOAL_OPTS = ['Exams', 'Research', 'Personal growth', 'Language', 'Coding', 'Creative writing']
+// ── Get position of a data-tour element ───────────────────────
+function getSpotlight(anchor: string | null) {
+  if (!anchor) return null
+  const el = document.querySelector(`[data-tour="${anchor}"]`)
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  return { top: r.top, left: r.left, width: r.width, height: r.height }
+}
 
-const VIBES = [
-  { id: 'gentle', e: '🌱', label: 'Gentle', desc: 'Warm, patient, never judges.' },
-  { id: 'balanced', e: '⚡', label: 'Balanced', desc: 'Supportive but keeps you accountable.' },
-  { id: 'strict', e: '🎯', label: 'Strict', desc: 'Direct and results-focused. No fluff.' },
-  { id: 'chill', e: '🌊', label: 'Chill', desc: 'Laid-back study companion. No pressure.' },
-]
-
-export default function OnboardingTour({ onDone }: { onDone: (profile: Profile) => void }) {
-  const [step, setStep] = useState(0)
-  const [name, setName] = useState('')
-  const [ai, setAi] = useState('claude')
-  const [vibe, setVibe] = useState('balanced')
-  const [goals, setGoals] = useState<string[]>([])
-  const [locStatus, setLocStatus] = useState<'idle' | 'asking' | 'done' | 'denied'>('idle')
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
-  const [locationName, setLocationName] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+// ── Main ──────────────────────────────────────────────────────
+export default function OnboardingTour({ setPage }: { setPage: (p: Page) => void }) {
+  const [step,       setStep]       = useState(0)
+  const [visible,    setVisible]    = useState(false)
+  const [exiting,    setExiting]    = useState(false)
+  const [spotlight,  setSpotlight]  = useState<{ top:number; left:number; width:number; height:number } | null>(null)
 
   useEffect(() => {
-    if (step !== 0) return
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 200)
-    return () => window.clearTimeout(timer)
-  }, [step])
+    if (localStorage.getItem(TOUR_KEY)) return
+    const t = setTimeout(() => setVisible(true), 900)
+    return () => clearTimeout(t)
+  }, [])
 
-  const toggleGoal = (goal: string) => {
-    setGoals((current) => current.includes(goal) ? current.filter((item) => item !== goal) : [...current, goal])
+  // Update spotlight whenever step changes — poll briefly for DOM readiness
+  useEffect(() => {
+    if (!visible) return
+    const current = STEPS[step]
+    let attempts = 0
+    const poll = setInterval(() => {
+      const s = getSpotlight(current.anchor)
+      if (s) { setSpotlight(s); clearInterval(poll) }
+      if (++attempts > 15) { setSpotlight(null); clearInterval(poll) }
+    }, 80)
+    // Also update on resize
+    const onResize = () => setSpotlight(getSpotlight(current.anchor))
+    window.addEventListener('resize', onResize)
+    return () => { clearInterval(poll); window.removeEventListener('resize', onResize) }
+  }, [step, visible])
+
+  if (!visible) return null
+
+  const current = STEPS[step]
+  const isLast  = step === STEPS.length - 1
+  const PAD     = 12
+
+  const advance = () => {
+    if (isLast) { dismiss(); return }
+    setExiting(true)
+    setTimeout(() => {
+      const next = STEPS[step + 1]
+      if (next.page) setPage(next.page)
+      setStep(s => s + 1)
+      setExiting(false)
+    }, 200)
   }
 
-  const canNext = [name.trim().length > 0, true, true, goals.length > 0, true][step]
-
-  const requestLocation = () => {
-    setLocStatus('asking')
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lon } = position.coords
-        setCoords({ lat, lon })
-        try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
-          const payload = await response.json()
-          setLocationName(payload.address?.city || payload.address?.town || payload.address?.state || 'your area')
-        } catch {
-          setLocationName('your area')
-        }
-        setLocStatus('done')
-      },
-      () => setLocStatus('denied')
-    )
+  const dismiss = () => {
+    setExiting(true)
+    setTimeout(() => {
+      setVisible(false)
+      localStorage.setItem(TOUR_KEY, '1')
+    }, 220)
   }
 
-  const finish = () => {
-    const profile: Profile = {
-      name,
-      ai,
-      vibe,
-      goals,
-      location: locationName,
-      lat: coords?.lat ?? null,
-      lon: coords?.lon ?? null,
-      onboarded: true,
+  const progress = ((step + 1) / STEPS.length) * 100
+  const W = window.innerWidth
+  const H = window.innerHeight
+
+  // Card position: centre on step 0, otherwise above/below spotlight
+  let cardStyle: React.CSSProperties = {
+    position: 'fixed',
+    zIndex: 9993,
+    width: 'clamp(300px,90vw,390px)',
+    background: 'var(--bg-card)',
+    border: '0.5px solid var(--border)',
+    borderRadius: 24,
+    padding: '22px 22px 18px',
+    boxShadow: '0 24px 64px rgba(0,0,0,.45), 0 0 0 0.5px rgba(255,255,255,.06)',
+    backdropFilter: 'blur(32px)',
+    animation: exiting
+      ? 'tourOut .2s var(--ease-in-out) both'
+      : 'tourIn .32s var(--ease-out) both',
+  }
+
+  if (!spotlight || !current.anchor) {
+    // Centre of screen
+    cardStyle = { ...cardStyle, top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }
+  } else {
+    const spCx   = spotlight.left + spotlight.width / 2
+    const cardW  = Math.min(390, W * 0.9)
+    const cardL  = Math.max(16, Math.min(spCx - cardW / 2, W - cardW - 16))
+    const spBot  = spotlight.top + spotlight.height + PAD
+    const spTop  = spotlight.top - PAD
+
+    // Try to place below; if not enough room place above
+    if (spBot + 180 < H) {
+      cardStyle = { ...cardStyle, top: spBot + 10, left: cardL }
+    } else {
+      cardStyle = { ...cardStyle, bottom: H - spTop + 10, left: cardL }
     }
-    localStorage.setItem('shh_profile', JSON.stringify(profile))
-    onDone(profile)
   }
-
-  const steps = ['name', 'ai', 'vibe', 'goals', 'location']
 
   return (
-    <div className="onboard-wrap">
-      <div className="onboard-card">
-        <div style={{ display: 'flex', gap: 7, marginBottom: 32 }}>
-          {steps.map((_, index) => (
-            <div key={index} className={`step-dot${index <= step ? ' active' : ''}`} />
-          ))}
+    <>
+      {/* ── SVG overlay with spotlight cutout ── */}
+      <svg
+        style={{ position:'fixed', inset:0, width:'100%', height:'100%', zIndex:9991, pointerEvents:'none' }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <mask id="shh-spotlight-mask">
+            <rect width="100%" height="100%" fill="white"/>
+            {spotlight && (
+              <rect
+                x={spotlight.left - PAD}
+                y={spotlight.top  - PAD}
+                width={spotlight.width  + PAD * 2}
+                height={spotlight.height + PAD * 2}
+                rx={14}
+                fill="black"
+              />
+            )}
+          </mask>
+        </defs>
+
+        {/* Dimmed overlay */}
+        <rect
+          width="100%" height="100%"
+          fill="rgba(0,0,0,0.68)"
+          mask="url(#shh-spotlight-mask)"
+          style={{ transition: 'opacity .3s ease' }}
+        />
+
+        {/* Spotlight accent border + glow */}
+        {spotlight && (
+          <rect
+            x={spotlight.left - PAD}
+            y={spotlight.top  - PAD}
+            width={spotlight.width  + PAD * 2}
+            height={spotlight.height + PAD * 2}
+            rx={14}
+            fill="none"
+            stroke="rgba(99,140,245,0.7)"
+            strokeWidth="1.5"
+            style={{ filter:'drop-shadow(0 0 10px rgba(99,140,245,0.5))' }}
+          />
+        )}
+      </svg>
+
+      {/* Click backdrop to skip */}
+      <div onClick={dismiss} style={{ position:'fixed', inset:0, zIndex:9992, cursor:'pointer' }}/>
+
+      {/* ── Tour card ── */}
+      <div style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()}>
+
+        {/* Progress bar */}
+        <div style={{ height:2, background:'var(--text-4)', borderRadius:99, overflow:'hidden', marginBottom:18 }}>
+          <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg,var(--accent),#b07ef7)', width:`${progress}%`, transition:'width .35s var(--ease-out)' }}/>
         </div>
 
-        {step === 0 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Welcome</p>
-            <p className="onboard-q">What should I call you?</p>
-            <input
-              ref={inputRef}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Your name..."
-              style={{ fontSize: 18, fontWeight: 300, padding: '14px 18px' }}
-              onKeyDown={(event) => event.key === 'Enter' && canNext && setStep(1)}
-            />
+        {/* Content */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:13, marginBottom:18 }}>
+          <div style={{ width:42, height:42, borderRadius:12, flexShrink:0, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21 }}>
+            {current.emoji}
           </div>
-        )}
-
-        {step === 1 && (
           <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Your AI</p>
-            <p className="onboard-q">Which AI will you study with?</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {AI_OPTS.map((option) => (
-                <button key={option.id} className={`ai-card${ai === option.id ? ' active' : ''}`} onClick={() => setAi(option.id)}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{option.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 300 }}>{option.sub}</span>
-                </button>
-              ))}
+            <div style={{ fontSize:15, fontWeight:500, color:'var(--text-1)', marginBottom:5, letterSpacing:'-0.2px' }}>
+              {current.title}
+            </div>
+            <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:300, lineHeight:1.65 }}>
+              {current.body}
             </div>
           </div>
-        )}
+        </div>
 
-        {step === 2 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Your style</p>
-            <p className="onboard-q">What kind of study buddy do you want?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {VIBES.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setVibe(option.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '14px 16px',
-                    borderRadius: 14,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    transition: 'all .2s',
-                    background: vibe === option.id ? 'var(--accent-soft)' : 'var(--bg-card)',
-                    border: `0.5px solid ${vibe === option.id ? 'var(--border-active)' : 'var(--border)'}`,
-                  }}
-                >
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{option.e}</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)', marginBottom: 2 }}>{option.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 300 }}>{option.desc}</div>
-                  </div>
-                  {vibe === option.id && (
-                    <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
+        {/* Dot indicators + buttons */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          {/* Step dots */}
+          <div style={{ display:'flex', gap:5 }}>
+            {STEPS.map((_, i) => (
+              <div key={i} style={{
+                height:5, borderRadius:99,
+                background: i === step ? 'var(--accent)' : 'var(--text-4)',
+                width: i === step ? 18 : 5,
+                transition:'width .3s var(--spring), background .3s ease',
+              }}/>
+            ))}
           </div>
-        )}
 
-        {step === 3 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Focus areas</p>
-            <p className="onboard-q">What are you studying for?</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
-              {GOAL_OPTS.map((goal) => (
-                <button key={goal} className={`goal-chip${goals.includes(goal) ? ' active' : ''}`} onClick={() => toggleGoal(goal)}>
-                  {goal}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div>
-            <p style={{ fontSize: 11, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 10 }}>Almost there</p>
-            <p className="onboard-q">Can I see your location?</p>
-            <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 24, fontWeight: 300, lineHeight: 1.6 }}>
-              Only used for weather on your home screen. Never shared.
-            </p>
-            {locStatus === 'idle' && (
-              <button className="btn btn-primary" onClick={requestLocation} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 1v4M12 19v4M1 12h4M19 12h4" />
-                </svg>
-                Share location
-              </button>
-            )}
-            {locStatus === 'asking' && <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Asking...</p>}
-            {locStatus === 'done' && <p style={{ color: 'var(--green)', fontSize: 14 }}>✓ Got it — {locationName}</p>}
-            {locStatus === 'denied' && <p style={{ color: '#f87171', fontSize: 13 }}>No problem, we&apos;ll skip weather.</p>}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 32, paddingTop: 24, borderTop: '0.5px solid var(--border)' }}>
-          {step > 0 && (
-            <button className="btn btn-ghost" style={{ padding: '8px 18px' }} onClick={() => setStep((current) => current - 1)}>
-              Back
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <button onClick={dismiss} style={{ padding:'7px 13px', borderRadius:999, fontSize:12, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
+              Skip
             </button>
-          )}
-          <div style={{ flex: 1 }} />
-          {step < 4 ? (
-            <button
-              className="btn btn-primary"
-              style={{ opacity: canNext ? 1 : 0.35, cursor: canNext ? 'pointer' : 'default' }}
-              onClick={() => canNext && setStep((current) => current + 1)}
-            >
-              Continue
+            <button onClick={advance} style={{ padding:'7px 18px', borderRadius:999, fontSize:13, fontWeight:500, border:'none', cursor:'pointer', fontFamily:'var(--font-body)', background:'linear-gradient(135deg,var(--accent),#7b6cf6)', color:'white', boxShadow:'0 4px 14px var(--accent-glow)', transition:'all .2s' }}>
+              {current.cta}
             </button>
-          ) : (
-            <button className="btn btn-primary" onClick={finish}>Let&apos;s go →</button>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <style>{`
+        @keyframes tourIn  { from { opacity:0; transform:translateY(14px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes tourOut { from { opacity:1; transform:translateY(0) scale(1); }       to { opacity:0; transform:translateY(8px) scale(0.97); } }
+      `}</style>
+    </>
   )
 }
