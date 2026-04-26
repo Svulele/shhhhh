@@ -9,9 +9,20 @@ export async function registerSW() {
     console.log('SW registered:', reg.scope)
     // Schedule streak reminder check
     scheduleStreakReminder(reg)
+    // Keep backend alive
+    keepBackendAlive()
   } catch (e) {
     console.warn('SW registration failed:', e)
   }
+}
+
+// ── Keep backend alive ────────────────────────────────────────
+function keepBackendAlive() {
+  const url = import.meta.env.VITE_API_URL
+  if (!url) return
+  setInterval(() => {
+    fetch(url + '/health').catch(() => {})
+  }, 10 * 60 * 1000)
 }
 
 // ── Request push permission + subscribe ──────────────────────
