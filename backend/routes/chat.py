@@ -6,6 +6,7 @@ import json
 import os
 import time
 from pathlib import Path
+from json import JSONDecodeError
 
 router = APIRouter()
 
@@ -77,6 +78,49 @@ def looks_like_unavailable_model(error_msg: str, status_code: int) -> bool:
         or "does not exist" in text
         or "unsupported model" in text
     )
+
+
+def expects_json_response(request: ChatRequest) -> bool:
+    combined = f"{request.system_prompt or ''}\n{request.message or ''}".lower()
+    return "json" in combined and (
+        "respond only" in combined
+        or "reply only" in combined
+        or "no markdown" in combined
+    )
+
+
+def extract_first_json_payload(text: str) -> Optional[str]:
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch not in "[{":
+            continue
+        try:
+            parsed, end = decoder.raw_decode(text[i:])
+        except JSONDecodeError:
+            continue
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(parsed)
+    return None
+
+
+def normalize_reply(reply: str, request: ChatRequest) -> str:
+    cleaned = reply.strip()
+    if not expects_json_response(request):
+        return cleaned
+
+    direct = cleaned.replace("```json", "").replace("```", "").strip()
+    try:
+        parsed = json.loads(direct)
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(parsed)
+    except JSONDecodeError:
+        pass
+
+    extracted = extract_first_json_payload(cleaned)
+    if extracted:
+        return extracted
+
+    return cleaned
 
 
 async def fetch_free_models(client: httpx.AsyncClient, headers: dict[str, str]) -> list[str]:
@@ -177,7 +221,7 @@ async def chat(request: ChatRequest):
                         if choices and "message" in choices[0]:
                             reply = choices[0]["message"].get("content", "")
                             if reply:
-                                return {"reply": reply.strip()}
+                                return {"reply": normalize_reply(reply, request)}
                     else:
                         error_text = response.text[:200]
                         last_error = f"{model}: HTTP {response.status_code} - {error_text}"
