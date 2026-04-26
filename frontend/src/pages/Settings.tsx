@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { CSSProperties } from 'react'
 import { useTheme, useUser } from '../App'
-import { saveCloudProfile } from '../supabase'
+import { saveProfile as saveCloudProfile } from '../supabase'
 
 interface Profile {
   name: string; ai: string; vibe: string; goals: string[]

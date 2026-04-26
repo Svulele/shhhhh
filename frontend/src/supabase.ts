@@ -182,10 +182,10 @@ export async function syncProfile(userId: string) {
 }
 
 // ── STUDY DAYS / STREAK ─────────────────────────────────────
-export async function recordStudyDay(userId: string) {
+export async function recordStudyDay(userId?: string) {
   recordLocalStudyDay()
 
-  if (!supabase) return
+  if (!supabase || !userId) return
 
   const { error } = await supabase
     .from('study_days')

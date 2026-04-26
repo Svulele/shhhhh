@@ -3,7 +3,18 @@ import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
 import { API_BASE_URL } from '../config'
-import OnboardingTour, { type Profile } from './Onboardingtour'
+import OnboardingTour from './Onboardingtour'
+
+interface Profile {
+  name: string
+  ai: string
+  vibe: string
+  goals: string[]
+  location: string
+  lat: number | null
+  lon: number | null
+  onboarded: boolean
+}
 
 // ── 30 rotating quotes ────────────────────────────────────────
 const QUOTES = [
@@ -430,9 +441,7 @@ export default function Dashboard({ material: _material, setPage }: { material: 
     }
   }, [user])
 
-  if (!profile?.onboarded) return <OnboardingTour onDone={setProfile} />
-
-  const firstName = profile.name.split(' ')[0]
+  const firstName = (profile?.name || 'there').split(' ')[0]
 
   const quickCards = [
     { label: 'Ask the AI',   sub: 'Explain, quiz, summarise',  page: 'chat'      as Page, color: '#7b9ef5', bg: 'rgba(99,140,245,.1)',   border: 'rgba(99,140,245,.2)',   icon: <svg viewBox="0 0 24 24" stroke="#7b9ef5" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
@@ -443,11 +452,13 @@ export default function Dashboard({ material: _material, setPage }: { material: 
 
   return (
     <>
+      {!profile?.onboarded && <OnboardingTour setPage={setPage} />}
+
       {/* Topbar — logo with proper spacing */}
       <div className="home-topbar">
         <div className="home-logo">Shhhhh</div>
         <div className="topbar-right">
-          {profile.lat && <WeatherPill lat={profile.lat} lon={profile.lon!} loc={profile.location} />}
+          {profile?.lat && <WeatherPill lat={profile.lat} lon={profile.lon!} loc={profile.location} />}
           <button className="icon-btn" onClick={toggle} title="Toggle theme">
             {theme === 'dark'
               ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
