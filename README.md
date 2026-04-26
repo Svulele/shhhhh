@@ -53,19 +53,3 @@ Real streak tracking — server-side study_days table, consecutive day calculati
 "Continue without account" option for quick access
 All PDFs and notes stay local (privacy-first)
 
-## Local environment setup
-
-Environment files are intentionally ignored by Git, so your real secrets will not be pushed to GitHub.
-That means a deploy, clone, or fresh machine needs local env files recreated from the examples.
-
-Frontend:
-Create `frontend/.env` from `frontend/.env.example` and set:
-- `VITE_API_BASE_URL`
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Backend:
-Create `backend/key.env` or export `OPENROUTER_API_KEY` in your shell.
-You can also set `FRONTEND_ORIGINS` if your frontend runs on a custom domain.
-
-After changing env files, restart the backend and frontend dev servers so they pick up the new values.
