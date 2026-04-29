@@ -73,7 +73,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
   const [page, setPage]         = useState<Page>('dashboard')
   const [material, setMaterial] = useState<any>(null)
   const [theme, setTheme]       = useState<Theme>(() =>
-    (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
+    (localStorage.getItem('shh_theme') as Theme) ?? 'light'
   )
 
   const toggle = () => {
@@ -236,7 +236,7 @@ export default function App() {
   const skipAuth = localStorage.getItem('shh_skip_auth') === '1'
 
   useEffect(() => {
-    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
+    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'light'
     document.documentElement.setAttribute('data-theme', t)
     registerSW().catch(console.warn)
   }, [])
