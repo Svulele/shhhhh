@@ -250,7 +250,7 @@ function Landing({ onStart }: { onStart: () => void }) {
           </button>
         </div>
         <p style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:28, fontWeight:300 }}>
-          Built with love by Sbulele — for someone who inspired it. Your data stays on your device.
+          Built with love by Sbulele — for someone who inspired it.<br />Your data stays on your device.
         </p>
       </div>
     </div>
