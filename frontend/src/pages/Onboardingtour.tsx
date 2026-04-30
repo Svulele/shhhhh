@@ -67,7 +67,7 @@ function getSpotlight(anchor: string | null) {
 }
 
 // ── Main ──────────────────────────────────────────────────────
-export default function OnboardingTour({ setPage }: { setPage: (p: Page) => void }) {
+export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page) => void; onDone?: () => void }) {
   const [step,       setStep]       = useState(0)
   const [visible,    setVisible]    = useState(false)
   const [exiting,    setExiting]    = useState(false)
@@ -87,8 +87,8 @@ export default function OnboardingTour({ setPage }: { setPage: (p: Page) => void
     const poll = setInterval(() => {
       const s = getSpotlight(current.anchor)
       if (s) { setSpotlight(s); clearInterval(poll) }
-      if (++attempts > 15) { setSpotlight(null); clearInterval(poll) }
-    }, 80)
+      if (++attempts > 30) { setSpotlight(null); clearInterval(poll) }
+    }, 100)
     // Also update on resize
     const onResize = () => setSpotlight(getSpotlight(current.anchor))
     window.addEventListener('resize', onResize)
@@ -109,7 +109,8 @@ export default function OnboardingTour({ setPage }: { setPage: (p: Page) => void
       if (next.page) setPage(next.page)
       setStep(s => s + 1)
       setExiting(false)
-    }, 200)
+      setSpotlight(null) // clear old spotlight while new page loads
+    }, 220)
   }
 
   const dismiss = () => {
@@ -117,6 +118,7 @@ export default function OnboardingTour({ setPage }: { setPage: (p: Page) => void
     setTimeout(() => {
       setVisible(false)
       localStorage.setItem(TOUR_KEY, '1')
+      onDone?.()
     }, 220)
   }
 

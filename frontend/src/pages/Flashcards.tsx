@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book { id: string; title: string; author: string; totalPages: number; currentPage: number }
@@ -44,15 +43,15 @@ const loadBooks = (): Book[] => { try { return JSON.parse(localStorage.getItem('
 async function generateFromSession(
   book: Book, fromPage: number, toPage: number
 ): Promise<Omit<Card, 'id' | 'createdAt'>[]> {
-  const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+  const res = await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      message: `Create flashcards for pages ${fromPage}-${toPage} of "${book.title}" by ${book.author}.`,
-      personality: 'friendly',
-      user_name: 'Student',
-      max_tokens: 1400,
-      system_prompt: `The reader just read pages ${fromPage}-${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `The reader just read pages ${fromPage}–${toPage} of "${book.title}" by ${book.author} (total ${book.totalPages} pages).
 
 Based on your knowledge of this book, create 6–8 flashcards that test the key ideas, concepts, terms, and arguments from that section.
 
@@ -64,20 +63,18 @@ Rules:
 - Don't create cards for things covered outside those pages
 
 Respond ONLY with a JSON array, no markdown, no extra text:
-[{"front":"...","back":"..."},...]`
+[{"front":"…","back":"…"},…]`
+      }]
     })
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data?.detail ?? 'Flashcard generation failed')
-  const text = (data?.reply ?? '').trim()
+  if (data.error) throw new Error(data.error.message)
+  const text = data.choices?.[0]?.message?.content ?? (data.content ?? []).map((c: any) => c.text ?? '').join('')
   const parsed: { front: string; back: string }[] = JSON.parse(text.replace(/```json|```/g, '').trim())
   return parsed.map(c => ({
     bookId: book.id, bookTitle: book.title,
     front: c.front, back: c.back,
     fromPage, toPage, difficulty: null,
-    nextReview: 0,
-    interval: 1,
-    reviewCount: 0,
   }))
 }
 
@@ -233,8 +230,6 @@ export default function Flashcards() {
     due:      reviewQ.length,
     mastered: filtered.filter(c => c.difficulty === 'easy' && c.reviewCount && c.reviewCount >= 3).length,
     unseen:   filtered.filter(c => !c.nextReview || c.nextReview === 0).length,
-    easy:     filtered.filter(c => c.difficulty === 'easy').length,
-    hard:     filtered.filter(c => c.difficulty === 'hard').length,
   }
 
   const rate = (difficulty: 'easy' | 'medium' | 'hard') => {

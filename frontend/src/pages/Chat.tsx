@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '../App'
 import { recordStudyDay } from '../supabase'
-import { API_BASE_URL } from '../config'
 
 // ── Types ──────────────────────────────────────────────────────
 interface Msg  { id:string; role:'user'|'assistant'; content:string; ts:number }
@@ -38,27 +37,16 @@ function getReadCtx() {
 async function updateMem(userMsg:string, aiReply:string) {
   const cur=loadM(); if(!userMsg.trim()||!aiReply.trim()) return
   try {
-    const res=await fetch(`${API_BASE_URL}/api/chat/`,{
+    const res=await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        message:`Extract 0-3 new study facts from this exchange and respond with JSON array only.`,
-        personality:'friendly',
-        user_name:'Memory',
-        max_tokens:200,
-        system_prompt:`Extract 0-3 NEW study facts about the student (learning style, struggles, goals, book preferences).
-Known facts:
-${cur.facts.length?cur.facts.map(f=>`- ${f}`).join('\n'):'none'}
-
-Conversation:
-Student: ${userMsg.slice(0,400)}
-AI: ${aiReply.slice(0,400)}
-
-Return ONLY a JSON array. Example: ["prefers short quizzes"]`,
-      })
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:
+`Extract 0–3 NEW study facts (learning style, struggles, goals, book preferences). Known: ${cur.facts.length?cur.facts.map(f=>`- ${f}`).join('\n'):'none'}
+Exchange — Student: ${userMsg.slice(0,200)} | AI: ${aiReply.slice(0,200)}
+Reply ONLY with JSON array (empty if nothing new): ["fact 1","fact 2"]`}]})
     })
     const data=await res.json()
-    const text=(data?.reply??'').replace(/```json|```/g,'').trim()
-    const fresh:string[]=JSON.parse(text||'[]')
+    const raw=data.choices?.[0]?.message?.content ?? (data.content??[]).map((c:any)=>c.text??'').join('')
+    const fresh:string[]=JSON.parse(raw.replace(/```json|```/g,'').trim())
     if(!fresh.length) return
     const merged=[...cur.facts]
     fresh.forEach(f=>{if(!merged.some(e=>e.toLowerCase().includes(f.toLowerCase().slice(0,20))))merged.push(f)})
@@ -106,23 +94,13 @@ RULES: Never ask "what are you studying?" — you know from context. Reference b
 // ── AI call ────────────────────────────────────────────────────
 async function callAI(msgs:Msg[],sys:string,onChunk:(t:string)=>void,onDone:()=>void,onErr:(e:string)=>void) {
   try {
-    const history=msgs.slice(0,-1).map(m=>({role:m.role,content:m.content}))
-    const latest=msgs[msgs.length-1]
-    const res=await fetch(`${API_BASE_URL}/api/chat/`,{
+    const res=await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        message:latest?.content??'',
-        personality:'friendly',
-        user_name:getProf().name||'Student',
-        system_prompt:sys,
-        history,
-        max_tokens:1024,
-      })
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,system:sys,messages:msgs.map(m=>({role:m.role,content:m.content}))})
     })
     const data=await res.json()
-    if(!res.ok){onErr((data?.detail??'AI request failed').match(/credit|billing|quota/i)?'API limit reached.':data?.detail??'AI request failed');return}
-    const text=(data?.reply??'').trim()
-    if(!text){onErr('AI returned an empty response.');return}
+    if(data.error){onErr(data.error.message?.match(/credit|billing|quota/i)?'API limit reached.':data.error.message);return}
+    const text=data.choices?.[0]?.message?.content ?? (data.content??[]).map((c:any)=>c.text??'').join('')
     const words=text.split(' ')
     for(let i=0;i<words.length;i++){await new Promise(r=>setTimeout(r,14));onChunk((i===0?'':' ')+words[i])}
     onDone()
@@ -226,7 +204,7 @@ export default function Chat({material}:{material:any}) {
   const [error,    setError]    = useState<string|null>(null)
   const [showHist, setShowHist] = useState(false)
   const [curVibe,  setCurVibe]  = useState(()=>getProf().vibe??'balanced')
-  const bottomRef=useRef<HTMLDivElement>(null), inputRef=useRef<HTMLTextAreaElement>(null), t0=useRef(Date.now())
+  const [thinking, setThinking] = useState(false)
   const {listening,toggle:toggleVoice}=useVoice(t=>{setInput(t);setTimeout(()=>sendMsg(t),200)})
 
   useEffect(()=>{
@@ -253,17 +231,21 @@ export default function Chat({material}:{material:any}) {
     let sid=activeId
     if(!sid){const s=newS();s.messages=updated;setSessions(p=>[s,...p]);setActiveId(s.id);sid=s.id}
     const aiId=(Date.now()+1).toString(), aiMsg:Msg={id:aiId,role:'assistant',content:'',ts:Date.now()}
-    setMessages(m=>[...m,aiMsg]); setStreaming(true); setStreamId(aiId)
+    setMessages(m=>[...m,aiMsg]); setStreaming(true); setStreamId(aiId); setThinking(true)
     let full=''
     await callAI(updated,sys,
-      chunk=>{full+=chunk;setMessages(m=>m.map(x=>x.id===aiId?{...x,content:full}:x))},
+      chunk=>{
+        full+=chunk
+        if(thinking) setThinking(false)
+        setMessages(m=>m.map(x=>x.id===aiId?{...x,content:full}:x))
+      },
       ()=>{
-        setStreaming(false);setStreamId(null)
+        setStreaming(false);setStreamId(null);setThinking(false)
         const fin=[...updated,{...aiMsg,content:full}];setMessages(fin)
         setSessions(prev=>prev.map(s=>s.id===sid?{...s,messages:fin,title:content.slice(0,40)}:s))
         updateMem(content,full)
       },
-      err=>{setStreaming(false);setStreamId(null);setError(err);setMessages(m=>m.filter(x=>x.id!==aiId))}
+      err=>{setStreaming(false);setStreamId(null);setThinking(false);setError(err);setMessages(m=>m.filter(x=>x.id!==aiId))}
     )
   }
 
@@ -356,6 +338,18 @@ export default function Chat({material}:{material:any}) {
             {error&&(
               <div style={{margin:'12px 0',padding:'12px 16px',borderRadius:12,background:'rgba(239,68,68,.08)',border:'0.5px solid rgba(239,68,68,.2)',fontSize:13,color:'#fca5a5',lineHeight:1.6}}>
                 {error}<button onClick={()=>setError(null)} style={{display:'block',marginTop:8,fontSize:12,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',padding:0,fontFamily:'var(--font-body)'}}>Dismiss</button>
+              </div>
+            )}
+            {thinking&&(
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,animation:'fadeUp .2s var(--ease-out) both'}}>
+                <div style={{width:28,height:28,borderRadius:'50%',background:'linear-gradient(135deg,var(--accent),#7b6cf6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="12" r="10"/></svg>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:5,padding:'10px 14px',borderRadius:'4px 18px 18px 18px',background:'var(--bg-card)',border:'0.5px solid var(--border)'}}>
+                  {[0,1,2].map(i=>(
+                    <div key={i} style={{width:6,height:6,borderRadius:'50%',background:'var(--text-3)',animation:'pulse 1.2s ease-in-out infinite',animationDelay:`${i*0.2}s`}}/>
+                  ))}
+                </div>
               </div>
             )}
             <div ref={bottomRef} style={{height:1}}/>

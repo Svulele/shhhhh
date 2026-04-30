@@ -7,14 +7,17 @@ export { recordStudyDay, getStreak }
 interface Props { children: (user: User, doSignOut: () => void) => React.ReactNode }
 
 // ── Loading screen — cinematic, matches the app's dark aesthetic ─
-function LoadingScreen({ message }: { message: string }) {
+function LoadingScreen({ message, name }: { message: string; name?: string }) {
   const [phase, setPhase] = useState(0)
-  // Phase 0: logo entrance, Phase 1: text in, Phase 2: particles
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), 400)
     const t2 = setTimeout(() => setPhase(2), 800)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
+
+  const firstName = name?.trim().split(' ')[0] ?? ''
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   // 6 floating accent particles
   const particles = [
@@ -116,15 +119,37 @@ function LoadingScreen({ message }: { message: string }) {
         </div>
       </div>
 
-      {/* ── App name ── */}
+      {/* ── Greeting / App name ── */}
       {phase >= 1 && (
-        <div style={{
-          fontFamily: 'var(--font-display)', fontSize: 28,
-          letterSpacing: '-0.5px', color: 'var(--text-1)',
-          marginBottom: 10, zIndex: 1,
-          animation: 'textReveal 0.55s var(--ease-out) both',
-        }}>
-          Shhhhh
+        <div style={{ zIndex: 1, textAlign: 'center', animation: 'textReveal 0.55s var(--ease-out) both' }}>
+          {firstName ? (
+            <>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: 14,
+                letterSpacing: '2px', textTransform: 'uppercase',
+                color: 'var(--text-3)', marginBottom: 6,
+                animation: 'textReveal 0.55s var(--ease-out) 0.05s both',
+              }}>
+                {greeting}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: 32,
+                letterSpacing: '-0.8px', color: 'var(--text-1)',
+                marginBottom: 10, lineHeight: 1.1,
+                animation: 'textReveal 0.6s var(--ease-out) 0.1s both',
+              }}>
+                {firstName} <span style={{ fontStyle: 'italic', color: 'var(--accent)' }}>✦</span>
+              </div>
+            </>
+          ) : (
+            <div style={{
+              fontFamily: 'var(--font-display)', fontSize: 28,
+              letterSpacing: '-0.5px', color: 'var(--text-1)',
+              marginBottom: 10,
+            }}>
+              Shhhhh
+            </div>
+          )}
         </div>
       )}
 
@@ -250,7 +275,7 @@ function Landing({ onStart }: { onStart: () => void }) {
           </button>
         </div>
         <p style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:28, fontWeight:300 }}>
-          Built with love by Sbulele — for someone who inspired it.<br />Your data stays on your device.
+          Built with ❤️ · Powered by Claude · Your data stays on your device
         </p>
       </div>
     </div>
@@ -271,10 +296,12 @@ function AuthForm({ onBack }: { onBack: () => void }) {
     setBusy(true); setErr(null)
     try {
       if (mode === 'login') {
-        await signInWithEmail(email, pass)
+        const { error } = await signInWithEmail(email, pass)
+        if (error) throw error
         // onAuthStateChange will handle navigating to app
       } else {
-        const data = await signUpWithEmail(email, pass)
+        const { data, error } = await signUpWithEmail(email, pass)
+        if (error) throw error
         // If Supabase requires email confirmation, session will be null
         if (data?.user && !data?.session) {
           // Email confirmation required — show message, don't stay stuck
@@ -393,18 +420,21 @@ const USER_KEYS = [
 
 function clearUserData() {
   USER_KEYS.forEach(k => localStorage.removeItem(k))
+  // Also clear IndexedDB where PDFs are stored
+  try {
+    indexedDB.deleteDatabase('shh_pdfs')
+    indexedDB.deleteDatabase('shh-library')
+  } catch {}
 }
 
 export default function AuthGate({ children }: Props) {
   const [user,      setUser]      = useState<User|null>(null)
   const [screen,    setScreen]    = useState<'landing'|'auth'|'loading'|'app'>('landing')
   const [msg,       setMsg]       = useState('Signing you in')
-  // Track which user ID is currently loaded so we detect account switches
+  const [name,      setName]      = useState('')
   const currentUid = useRef<string|null>(null)
 
   useEffect(() => {
-    if (!supabase) return
-
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       if (u) handleReady(u)
@@ -440,12 +470,24 @@ export default function AuthGate({ children }: Props) {
   const handleReady = async (u: User) => {
     currentUid.current = u.id
     setScreen('loading')
+    // Try to get saved name immediately from localStorage
+    const savedName = (() => {
+      try { return JSON.parse(localStorage.getItem('shh_profile') ?? '{}').name ?? '' } catch { return '' }
+    })()
+    setName(savedName)
     const steps = ['Loading your profile', 'Syncing your streak', 'Almost there']
     for (const s of steps) {
       setMsg(s)
       await new Promise(r => setTimeout(r, s === 'Almost there' ? 300 : 550))
     }
-    try { await syncProfile(u.id) } catch {}
+    try {
+      await syncProfile(u.id)
+      // After sync, profile may have the name — pick it up
+      const syncedName = (() => {
+        try { return JSON.parse(localStorage.getItem('shh_profile') ?? '{}').name ?? '' } catch { return '' }
+      })()
+      if (syncedName) setName(syncedName)
+    } catch {}
     setUser(u)
     setScreen('app')
     if (!localStorage.getItem('shh_tour_done')) {
@@ -462,7 +504,7 @@ export default function AuthGate({ children }: Props) {
     setScreen('landing')
   }
 
-  if (screen === 'loading') return <LoadingScreen message={msg}/>
+  if (screen === 'loading') return <LoadingScreen message={msg} name={name}/>
   if (screen === 'app' && user) return <>{children(user, doSignOut)}</>
   if (screen === 'auth') return <AuthForm onBack={()=>setScreen('landing')}/>
   return <Landing onStart={()=>setScreen('auth')}/>

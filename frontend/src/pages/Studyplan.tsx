@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import type { Page } from '../App'
-import { API_BASE_URL } from '../config'
 
 // ── Types ─────────────────────────────────────────────────────
 interface PlanItem {
@@ -9,7 +8,6 @@ interface PlanItem {
   title: string
   detail: string
   duration: number   // minutes
-  emoji?: string
   page?: Page
   done: boolean
 }
@@ -21,9 +19,6 @@ interface DayPlan {
   items: PlanItem[]
   generatedAt: number
 }
-
-let pendingPlanDate: string | null = null
-let pendingPlanPromise: Promise<DayPlan> | null = null
 
 // ── Storage ───────────────────────────────────────────────────
 const PLAN_KEY = 'shh_daily_plan'
@@ -91,11 +86,15 @@ Time of day: ${greeting.toLowerCase()}
 `.trim()
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/chat/`, {
+    const res = await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: `You are a study planner. Based on this context, create a realistic daily study plan.
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `You are a study planner. Based on this context, create a realistic daily study plan.
 
 ${context}
 
@@ -118,18 +117,14 @@ Respond ONLY with JSON, no markdown:
       "duration": 25
     }
   ]
-}`,
-        personality: profile.vibe === 'strict' ? 'strict' : profile.vibe === 'chill' ? 'calm' : 'friendly',
-        user_name: profile.name || 'Student',
+}`
+        }]
       })
     })
 
-    const data = await res.json().catch(() => null)
-    if (!res.ok) {
-      throw new Error(data?.detail ?? data?.error?.message ?? `Request failed with status ${res.status}`)
-    }
-    const text = data?.reply ?? ''
-    if (!text) throw new Error('AI returned an empty response')
+    const data   = await res.json()
+    if (data.error) throw new Error(data.error.message)
+    const text   = data.choices?.[0]?.message?.content ?? (data.content ?? []).map((c: any) => c.text ?? '').join('')
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
 
     const pageMap: Record<string, Page> = {
@@ -200,19 +195,6 @@ Respond ONLY with JSON, no markdown:
   }
 }
 
-function getPlanForToday(): Promise<DayPlan> {
-  const today = new Date().toISOString().split('T')[0]
-  if (pendingPlanPromise && pendingPlanDate === today) return pendingPlanPromise
-
-  pendingPlanDate = today
-  pendingPlanPromise = generatePlan().finally(() => {
-    pendingPlanDate = null
-    pendingPlanPromise = null
-  })
-
-  return pendingPlanPromise
-}
-
 // ── Type icons + colours ──────────────────────────────────────
 const TYPE_CONFIG = {
   read:   { emoji: '📖', color: '#b07ef7', bg: 'rgba(160,100,220,.1)'  },
@@ -244,7 +226,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
   const generate = async () => {
     setLoading(true); setError(null)
     try {
-      const p = await getPlanForToday()
+      const p = await generatePlan()
       savePlan(p); setPlan(p)
     } catch (e: any) {
       setError('Could not generate plan. Check your connection.')
@@ -363,7 +345,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.title}</span>
-                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.color, fontWeight: 500 }}>{cfg.emoji} {item.duration}m</span>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.color, fontWeight: 500 }}>{item.emoji} {item.duration}m</span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 300, lineHeight: 1.5 }}>{item.detail}</div>
                     </div>

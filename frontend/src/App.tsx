@@ -8,9 +8,10 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/Studyplan'
+import StudyPlan   from './pages/StudyPlan'
 import { registerSW } from './pwa'
 import { submitFeedback } from './supabase'
+import OnboardingTour from './pages/OnboardingTour'
 import './App.css'
 
 export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan'
@@ -72,9 +73,25 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
 function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => void }) {
   const [page, setPage]         = useState<Page>('dashboard')
   const [material, setMaterial] = useState<any>(null)
+  const [showTour, setShowTour] = useState(false)
   const [theme, setTheme]       = useState<Theme>(() =>
-    (localStorage.getItem('shh_theme') as Theme) ?? 'light'
+    (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
   )
+
+  // Show tour after onboarding — poll for onboarded flag
+  useEffect(() => {
+    const check = () => {
+      try {
+        const p = JSON.parse(localStorage.getItem('shh_profile') ?? '{}')
+        if (p?.onboarded && !localStorage.getItem('shh_tour_done')) {
+          setShowTour(true)
+        }
+      } catch {}
+    }
+    check()
+    const iv = setInterval(check, 500)
+    return () => clearInterval(iv)
+  }, [])
 
   const toggle = () => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
@@ -124,6 +141,12 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
           </div>
           <FloatingNav page={page} setPage={navigate} />
           <FeedbackButton />
+          {showTour && (
+            <OnboardingTour
+              setPage={(p) => { navigate(p); }}
+              onDone={() => setShowTour(false)}
+            />
+          )}
         </div>
       </UserCtx.Provider>
     </ThemeCtx.Provider>
@@ -236,7 +259,7 @@ export default function App() {
   const skipAuth = localStorage.getItem('shh_skip_auth') === '1'
 
   useEffect(() => {
-    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'light'
+    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
     document.documentElement.setAttribute('data-theme', t)
     registerSW().catch(console.warn)
   }, [])
