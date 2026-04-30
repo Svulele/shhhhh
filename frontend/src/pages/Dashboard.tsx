@@ -410,7 +410,7 @@ function WeatherPill({ lat, lon, locationName }: { lat:number; lon:number; locat
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export default function Dashboard({ material: _material, setPage }: { material:any; setPage:(p:Page)=>void }) {
+export default function Dashboard({ material, setPage }: { material:any; setPage:(p:Page)=>void }) {
   const { theme, toggle } = useTheme()
   const { user }          = useUser()
   const [profile,  setProfile]  = useState<Profile|null>(null)
@@ -449,6 +449,7 @@ export default function Dashboard({ material: _material, setPage }: { material:a
 
   return (
     <>
+      {/* ── Topbar ── */}
       <div className="home-topbar">
         <div className="home-logo">Shhhhh</div>
         <div className="topbar-right">
@@ -463,32 +464,40 @@ export default function Dashboard({ material: _material, setPage }: { material:a
 
       <div className="home-inner">
         <div className="home-cols">
-          {/* ── Left ── */}
+
+          {/* ── Left column ── */}
           <div className="home-col">
-            <div>
+
+            {/* Hero greeting */}
+            <div style={{paddingBottom:4}}>
               <div className="hero-time">{greeting}</div>
               <div className="hero-name">Hey, <em>{firstName}</em> —<br/>ready to learn?</div>
             </div>
 
-            <div className="card streak">
-              <div style={{display:'flex',alignItems:'baseline',gap:6}}>
-                <div className="streak-num">{streak}</div>
-                <div className="streak-icon"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+            {/* Streak + quote — side by side on wide screens, stacked on narrow */}
+            <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:10,alignItems:'stretch'}}>
+              {/* Streak badge */}
+              <div className="card" style={{padding:'14px 18px',minWidth:100,display:'flex',flexDirection:'column',justifyContent:'center',gap:4}}>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <div className="streak-num">{streak}</div>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                </div>
+                <div className="streak-lbl">Day streak</div>
+                <div style={{display:'flex',gap:3,marginTop:4}}>
+                  {Array.from({length:7}).map((_,i)=>{
+                    const filled = i < Math.min(streak%7||7,7)
+                    return <div key={i} style={{flex:1,height:3,borderRadius:99,background:filled?'var(--accent)':'var(--text-4)',transition:'background .4s ease'}}/>
+                  })}
+                </div>
               </div>
-              <div className="streak-lbl">Day streak</div>
-              <div className="streak-dots">
-                {Array.from({length:7}).map((_,i)=>{
-                  const filled=i<Math.min(streak%7||7,7), isToday=i===(new Date().getDay()+6)%7
-                  return <div key={i} className={`s-dot${filled?' done':''}${isToday?' today':''}`}/>
-                })}
+              {/* Quote */}
+              <div className="card" style={{padding:'14px 16px',display:'flex',flexDirection:'column',justifyContent:'center'}}>
+                <div className="quote-text">"{quote.text}"</div>
+                <div className="quote-author" style={{marginTop:6}}>— {quote.author}</div>
               </div>
             </div>
 
-            <div className="card quote">
-              <div className="quote-text">"{quote.text}"</div>
-              <div className="quote-author">— {quote.author}</div>
-            </div>
-
+            {/* Continue reading */}
             {session&&(
               <button className="session-banner" onClick={()=>setPage('library')}>
                 <div className="book-thumb"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/></svg></div>
@@ -501,24 +510,27 @@ export default function Dashboard({ material: _material, setPage }: { material:a
               </button>
             )}
 
+            {/* Quick action cards — 2×2 grid */}
             <div>
               <div className="sec-lbl">What do you want to do?</div>
               <div className="quick-grid">
                 {quickCards.map(c=>(
                   <button key={c.label} className="quick-card" onClick={()=>setPage(c.page)}>
                     <div className="quick-icon" style={{background:c.bg,border:`1px solid ${c.border}`}}>{c.icon}</div>
-                    <h4>{c.label}</h4><p>{c.sub}</p>
+                    <h4>{c.label}</h4>
+                    <p>{c.sub}</p>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* ── Right ── */}
-          <div className="home-col" style={{paddingTop:4}}>
+          {/* ── Right column ── */}
+          <div className="home-col" style={{paddingTop:2}}>
             <PomodoroWidget/>
             <StudyStats/>
           </div>
+
         </div>
       </div>
     </>

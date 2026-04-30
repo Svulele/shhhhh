@@ -251,8 +251,9 @@ body::after {
 }
 .hero-name {
   font-family: var(--font-display);
-  font-size: clamp(32px,3.8vw,52px);
-  line-height: 1.06; letter-spacing: -1.5px; color: var(--text-1);
+  font-size: clamp(28px,3.2vw,44px);
+  line-height: 1.08; letter-spacing: -1.2px; color: var(--text-1);
+  margin-bottom: 2px;
 }
 .hero-name em { font-style: italic; color: var(--accent); opacity: 0.9; }
 
@@ -300,24 +301,22 @@ body::after {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
 .quick-card {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 16px 16px 14px; border-radius: var(--r-lg);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 13px 13px 11px; border-radius: var(--r-md);
   background: var(--bg-card); border: 0.5px solid var(--border);
   text-align: left; cursor: pointer; font-family: var(--font-body);
-  /* Layered transitions for the "lift" feel */
-  transition: transform   var(--dur-mid) var(--ease-out),
-              box-shadow  var(--dur-mid) var(--ease-out),
-              background  var(--dur-mid) var(--ease-in-out),
-              border-color var(--dur-mid) var(--ease-in-out);
-  will-change: transform, box-shadow;
+  transition: transform var(--dur-mid) var(--ease-out),
+              box-shadow var(--dur-mid) var(--ease-out),
+              background var(--dur-mid) var(--ease-in-out);
+  will-change: transform;
 }
-.quick-card h4 { font-size: 13px; font-weight: 500; color: var(--text-1); }
-.quick-card p  { font-size: 11.5px; color: var(--text-3); font-weight: 300; line-height: 1.4; }
+.quick-card h4 { font-size: 12.5px; font-weight: 500; color: var(--text-1); }
+.quick-card p  { font-size: 11px; color: var(--text-3); font-weight: 300; line-height: 1.35; }
 .quick-icon {
-  width: 34px; height: 34px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 2px;
 }
-.quick-icon svg { width: 16px; height: 16px; }
+.quick-icon svg { width: 13px; height: 13px; }
 
 /* ─────────────────────────────────────────────────────────────
    SESSION BANNER
@@ -349,9 +348,9 @@ body::after {
 /* ─────────────────────────────────────────────────────────────
    QUOTE CARD
 ───────────────────────────────────────────────────────────── */
-.quote-card   { padding: 18px 20px; border-radius: var(--r-lg); background: var(--bg-card); border: 0.5px solid var(--border); }
-.quote-text   { font-family: var(--font-display); font-size: clamp(14px,1.5vw,16px); color: var(--text-1); line-height: 1.6; font-style: italic; margin-bottom: 8px; opacity: 0.85; }
-.quote-author { font-size: 11px; color: var(--text-3); letter-spacing: 0.5px; }
+.quote-card   { padding: 14px 16px; border-radius: var(--r-md); background: var(--bg-card); border: 0.5px solid var(--border); }
+.quote-text   { font-family: var(--font-display); font-size: clamp(12px,1.2vw,14px); color: var(--text-1); line-height: 1.55; font-style: italic; opacity: 0.85; margin: 0; }
+.quote-author { font-size: 10px; color: var(--text-3); letter-spacing: 0.5px; margin: 0; }
 
 /* ─────────────────────────────────────────────────────────────
    POMODORO WIDGET
@@ -604,6 +603,33 @@ button:focus:not(:focus-visible) { outline: none; }
   66%  { transform:translateY(-8px)  translateX(-6px) scale(0.9); opacity:0.7; }
   100% { transform:translateY(0)    translateX(0)    scale(1);   opacity:0.6; }
 }
+
+
+/* ── Streak dots (new inline style) ─────────────────────────── */
+.streak-num  { font-family:var(--font-display); font-size:28px; letter-spacing:-1px; color:var(--text-1); line-height:1; }
+.streak-lbl  { font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:1.5px; }
+
+/* ── Pomodoro card ───────────────────────────────────────────── */
+.pomo-card   { background:var(--bg-card); border:0.5px solid var(--border); border-radius:var(--r-xl); padding:18px 20px; }
+.pomo-top    { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+.pomo-lbl    { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
+.pomo-tabs   { display:flex; gap:4px; }
+.pomo-tab    { padding:4px 12px; border-radius:999px; border:0.5px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; cursor:pointer; font-family:var(--font-body); transition:all .18s; }
+.pomo-tab.active { background:var(--accent-soft); border-color:var(--border-active); color:var(--accent); font-weight:500; }
+.pomo-sessions-num { font-family:var(--font-display); font-size:24px; letter-spacing:-0.5px; color:var(--text-1); line-height:1; text-align:right; }
+.pomo-sessions-lbl { font-size:10px; color:var(--text-3); text-align:right; }
+.pomo-time-row { display:flex; align-items:center; gap:16px; }
+.pomo-time     { font-family:var(--font-display); font-size:56px; font-weight:400; letter-spacing:-3px; color:var(--timer-color); line-height:1; }
+.pomo-time .sep { opacity:0.4; }
+.pomo-controls { display:flex; align-items:center; gap:8px; }
+.pomo-btn      { width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:var(--bg-card); display:flex; align-items:center; justifyContent:center; cursor:pointer; color:var(--ctrl-color); transition:all .18s; }
+.pomo-btn-play { width:48px; height:48px; background:linear-gradient(135deg,var(--accent),#7b6cf6); color:white; border:none; box-shadow:0 4px 18px var(--accent-glow); }
+.pomo-btn-play svg { fill:white; }
+.pomo-btn svg  { fill:var(--ctrl-fill); }
+.pomo-ambient  { display:flex; align-items:center; gap:6px; margin-top:12px; flex-wrap:wrap; }
+.ambient-lbl   { font-size:10px; color:var(--text-3); letter-spacing:1px; margin-right:2px; }
+.sound-btn     { width:30px; height:30px; border-radius:8px; border:0.5px solid var(--border); background:transparent; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .18s; }
+.sound-btn.active { background:var(--accent-soft); border-color:var(--border-active); }
 
 /* ─────────────────────────────────────────────────────────────
    RESPONSIVE
