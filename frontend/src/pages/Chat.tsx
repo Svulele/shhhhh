@@ -206,6 +206,9 @@ export default function Chat({material}:{material:any}) {
   const [curVibe,  setCurVibe]  = useState(()=>getProf().vibe??'balanced')
   const [thinking, setThinking] = useState(false)
   const {listening,toggle:toggleVoice}=useVoice(t=>{setInput(t);setTimeout(()=>sendMsg(t),200)})
+  const t0 = useRef<number>(0)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(()=>{
     t0.current=Date.now()

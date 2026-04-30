@@ -72,9 +72,14 @@ Respond ONLY with a JSON array, no markdown, no extra text:
   const text = data.choices?.[0]?.message?.content ?? (data.content ?? []).map((c: any) => c.text ?? '').join('')
   const parsed: { front: string; back: string }[] = JSON.parse(text.replace(/```json|```/g, '').trim())
   return parsed.map(c => ({
+    id: Date.now().toString() + Math.random(),
     bookId: book.id, bookTitle: book.title,
     front: c.front, back: c.back,
     fromPage, toPage, difficulty: null,
+    createdAt: Date.now(),
+    nextReview: 0,
+    interval: 0,
+    reviewCount: 0,
   }))
 }
 
@@ -308,7 +313,7 @@ export default function Flashcards() {
               <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--text-1)', marginBottom: 8, letterSpacing: '-0.5px' }}>Session complete</div>
               <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 28, lineHeight: 1.6 }}>
-                Easy: {stats.easy} · Hard: {stats.hard} · Remaining: {reviewQ.length}
+                Mastered: {stats.mastered} · Due: {stats.due} · Remaining: {reviewQ.length}
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                 <button onClick={() => { setIdx(0); setDone(false); setMode('review') }}

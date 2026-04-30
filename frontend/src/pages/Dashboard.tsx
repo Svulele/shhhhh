@@ -410,7 +410,7 @@ function WeatherPill({ lat, lon, locationName }: { lat:number; lon:number; locat
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export default function Dashboard({ material, setPage }: { material:any; setPage:(p:Page)=>void }) {
+export default function Dashboard({ material: _material, setPage }: { material:any; setPage:(p:Page)=>void }) {
   const { theme, toggle } = useTheme()
   const { user }          = useUser()
   const [profile,  setProfile]  = useState<Profile|null>(null)

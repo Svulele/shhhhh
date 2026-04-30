@@ -124,7 +124,7 @@ function PdfPage({ bookId, buf, pageNum, scale = 1.4, onLoad }: {
 }
 
 // ── Ebook page — text extraction with image detection ─────────
-function EbookPage({ bookId, buf, pageNum, totalPages, onLoad, onImagePage }: {
+function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onImagePage }: {
   bookId: string; buf: ArrayBuffer; pageNum: number; totalPages: number
   onLoad?: (n: number) => void; onImagePage?: () => void
 }) {
