@@ -17,7 +17,7 @@ import './App.css'
 export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan'
 export type Theme = 'dark' | 'light'
 
-export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'dark', toggle: () => {} })
+export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'light', toggle: () => {} })
 export const useTheme = () => useContext(ThemeCtx)
 
 // User context — pages use this to record study activity
@@ -75,7 +75,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
   const [material, setMaterial] = useState<any>(null)
   const [showTour, setShowTour] = useState(false)
   const [theme, setTheme]       = useState<Theme>(() =>
-    (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
+    (localStorage.getItem('shh_theme') as Theme) ?? 'light'
   )
 
   // Show tour after onboarding — poll for onboarded flag
@@ -259,7 +259,7 @@ export default function App() {
   const skipAuth = localStorage.getItem('shh_skip_auth') === '1'
 
   useEffect(() => {
-    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
+    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'light'
     document.documentElement.setAttribute('data-theme', t)
     registerSW().catch(console.warn)
   }, [])
