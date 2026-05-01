@@ -87,7 +87,10 @@ PERSONALITY: ${v.sys}
 RULES: Never ask "what are you studying?" — you know from context. Reference book content directly. Be a companion. Stay in ${vibe} vibe. Concise. Use markdown for lists/code.`
   if(mem.facts.length) s+=`\nKNOWN ABOUT THIS STUDENT:\n${mem.facts.map(f=>`- ${f}`).join('\n')}\n(Use naturally, don't recite.)`
   if(rc){const pct=rc.totalPages>0?Math.round(rc.currentPage/rc.totalPages*100):0; s+=`\nCURRENT READING: "${rc.title}" by ${rc.author} — page ${rc.currentPage}/${rc.totalPages} (${pct}%). Pages ~${Math.max(1,rc.currentPage-15)}–${rc.currentPage} just read. Use your knowledge of this book to answer.`}
-  if(material?.recap) s+=`\nJUST FINISHED: pages ${material.recap.fromPage}–${material.recap.toPage}. Summary: ${material.recap.summary?.join(' ')}`
+  if(material?.recap) s+=`\nJUST FINISHED: pages ${material.recap.fromPage}–${material.recap.toPage}. Summary: ${material.recap.summary?.join(' ')}
+EXTRACTED PAGE TEXT:
+${material.recap.excerpt || 'No extractable PDF text was available.'}
+Use this session context directly. Do not ask the user to paste text, upload a photo, or provide the pages again.`
   return s.trim()
 }
 
