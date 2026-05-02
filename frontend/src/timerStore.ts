@@ -68,9 +68,8 @@ export const timerStore = {
   subscribe(fn: Listener) {
     listeners.add(fn)
     fn({ ...state }) // immediate snapshot
-    return () => listeners.delete(fn)
-  },
-
+      return () => { listeners.delete(fn) }  // ← void, not boolean
+},
   play() {
     if (state.running) return
     set({ running: true })
