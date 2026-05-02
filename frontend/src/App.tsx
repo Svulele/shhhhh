@@ -8,10 +8,12 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/Studyplan'
+import StudyPlan   from './pages/StudyPlan'
 import { registerSW } from './pwa'
 import { submitFeedback } from './supabase'
-import OnboardingTour from './pages/Onboardingtour'
+import OnboardingTour from './pages/OnboardingTour'
+import { timerStore } from './timerStore'
+import type { TimerState } from './timerStore'
 import './App.css'
 
 export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan'
@@ -155,6 +157,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
             </div>
           </div>
           <FloatingNav page={page} setPage={navigate} />
+          <MiniTimer currentPage={page} setPage={navigate} />
           <FeedbackButton />
           {showTour && (
             <OnboardingTour
@@ -165,6 +168,86 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
         </div>
       </UserCtx.Provider>
     </ThemeCtx.Provider>
+  )
+}
+
+// ── Mini timer pill — follows you across all pages ────────────
+function MiniTimer({ currentPage, setPage }: { currentPage: Page; setPage: (p: Page) => void }) {
+  const [t, setT] = useState<TimerState>(timerStore.get)
+  useEffect(() => timerStore.subscribe(setT), [])
+
+  // Only show when running AND not already on the pomodoro page
+  if (!t.running || currentPage === 'pomodoro') return null
+
+  const { mm, ss, pct } = timerStore.fmt()
+  const isWork  = t.mode === 'work'
+  const accent  = isWork ? 'var(--accent)' : 'var(--green)'
+  const glow    = isWork ? 'var(--accent-glow)' : 'var(--green-glow)'
+  const circ    = 2 * Math.PI * 13
+
+  return (
+    <div
+      onClick={() => setPage('pomodoro')}
+      style={{
+        position: 'fixed',
+        bottom: 100,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 998,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 16px 8px 10px',
+        borderRadius: 999,
+        background: 'var(--nav-bg)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: `1px solid ${isWork ? 'rgba(99,140,245,0.3)' : 'rgba(62,207,160,0.3)'}`,
+        boxShadow: `0 4px 24px ${glow}, var(--nav-shadow)`,
+        cursor: 'pointer',
+        animation: 'toastIn .35s var(--spring) both',
+        userSelect: 'none',
+        touchAction: 'manipulation',
+      }}
+    >
+      {/* Mini ring */}
+      <svg width="30" height="30" viewBox="0 0 30 30" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+        <circle cx="15" cy="15" r="13" fill="none" stroke="var(--text-4)" strokeWidth="2.5"/>
+        <circle cx="15" cy="15" r="13" fill="none"
+          stroke={accent} strokeWidth="2.5" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)}
+          style={{ transition: 'stroke-dashoffset 1s linear', filter: `drop-shadow(0 0 4px ${glow})` }}
+        />
+      </svg>
+
+      {/* Time */}
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '-0.8px', color: 'var(--text-1)', lineHeight: 1 }}>
+        {mm}<span style={{ opacity: 0.3, fontSize: 14 }}>:</span>{ss}
+      </div>
+
+      {/* Mode label */}
+      <div style={{ fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: accent, fontWeight: 500 }}>
+        {isWork ? 'Focus' : 'Break'}
+      </div>
+
+      {/* Pause/Play button */}
+      <button
+        onClick={e => { e.stopPropagation(); timerStore.toggle() }}
+        style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: `0.5px solid ${isWork ? 'rgba(99,140,245,0.3)' : 'rgba(62,207,160,0.3)'}`,
+          background: 'transparent',
+          color: accent, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          touchAction: 'manipulation', flexShrink: 0,
+        }}
+      >
+        {t.running
+          ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="5" height="18" rx="1"/><rect x="14" y="3" width="5" height="18" rx="1"/></svg>
+          : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        }
+      </button>
+    </div>
   )
 }
 
