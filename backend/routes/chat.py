@@ -160,11 +160,11 @@ async def get_cached_free_models(client: httpx.AsyncClient, headers: dict[str, s
 
 @router.post("")
 def chat(request: ChatRequest):
-    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    api_key = load_api_key()
     if not api_key:
         raise HTTPException(
             status_code=400,
-            detail="No backend API key found. Set OPENROUTER_API_KEY in Render environment variables.",
+            detail="No backend API key found. Set OPENROUTER_API_KEY in Render environment variables or add key.env file.",
         )
 
     payload = {
