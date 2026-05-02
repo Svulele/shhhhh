@@ -39,7 +39,7 @@ async function updateMem(userMsg:string, aiReply:string) {
   try {
     const res=await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:
+      body:JSON.stringify({model:'openrouter/auto',max_tokens:200,messages:[{role:'user',content:
 `Extract 0–3 NEW study facts (learning style, struggles, goals, book preferences). Known: ${cur.facts.length?cur.facts.map(f=>`- ${f}`).join('\n'):'none'}
 Exchange — Student: ${userMsg.slice(0,200)} | AI: ${aiReply.slice(0,200)}
 Reply ONLY with JSON array (empty if nothing new): ["fact 1","fact 2"]`}]})
@@ -96,7 +96,7 @@ async function callAI(msgs:Msg[],sys:string,onChunk:(t:string)=>void,onDone:()=>
   try {
     const res=await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,system:sys,messages:msgs.map(m=>({role:m.role,content:m.content}))})
+      body:JSON.stringify({model:'openrouter/auto',max_tokens:1024,system:sys,messages:msgs.map(m=>({role:m.role,content:m.content}))})
     })
     const data=await res.json()
     if(!res.ok){
