@@ -31,7 +31,6 @@ export interface CloudProfile {
   location: string
   lat: number | null
   lon: number | null
-  onboarded?: boolean
 }
 
 // ── SAFE HELPERS ─────────────────────────────────────────────
@@ -144,7 +143,7 @@ export async function loadProfile(userId: string): Promise<CloudProfile | null> 
     .from('profiles')
     .select('*')
     .eq('id', userId)
-    .maybeSingle()
+    .single()
 
   if (error && error.code !== 'PGRST116') throw error
   return data
@@ -155,12 +154,9 @@ export async function saveProfile(userId: string, profile: CloudProfile) {
 
   if (!supabase) return
 
-  // Keep local-only UI flags out of Supabase. Some deployed profile tables
-  // were created before these fields existed, so sending them breaks upserts.
-  const { onboarded: _onboarded, ...cloudProfile } = profile
   const { error } = await supabase
     .from('profiles')
-    .upsert({ id: userId, ...cloudProfile, updated_at: new Date().toISOString() })
+    .upsert({ id: userId, ...profile, updated_at: new Date().toISOString() })
 
   if (error) console.warn('Profile save failed:', error.message)
 }
@@ -235,7 +231,7 @@ export async function getTodayStudyTime(userId: string) {
     .select('seconds')
     .eq('user_id', userId)
     .eq('study_date', today)
-    .maybeSingle()
+    .single()
 
   return (data as any)?.seconds ?? 0
 }

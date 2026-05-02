@@ -8,7 +8,7 @@ interface Book {
   coverGradient: string; addedAt: number
 }
 interface Note { id: string; bookId: string; page: number; text: string; createdAt: number }
-interface RecapData { bookId: string; fromPage: number; toPage: number; summary: string[]; questions: string[]; excerpt?: string }
+interface RecapData { bookId: string; fromPage: number; toPage: number; summary: string[]; questions: string[] }
 type LibView     = 'shelf' | 'reader' | 'recap'
 type ShelfFilter = 'all' | 'progress' | 'finished'
 type ToastKind   = 'success' | 'error' | 'loading'
@@ -359,65 +359,20 @@ function NotesPanel({ book, currentPage, onClose }: { book: Book; currentPage: n
   )
 }
 
-async function extractPageRangeText(bookId: string, buf: ArrayBuffer, fromPage: number, toPage: number): Promise<string> {
-  const lib = await ensurePdfjs()
-  if (!_docCache.has(bookId)) {
-    const doc = await lib.getDocument({ data: buf.slice(0) }).promise
-    _docCache.set(bookId, doc)
-  }
-  const doc = _docCache.get(bookId)
-  const start = Math.max(1, Math.min(fromPage, toPage))
-  const end = Math.min(doc.numPages, Math.max(fromPage, toPage))
-  const chunks: string[] = []
-
-  for (let page = start; page <= end; page += 1) {
-    const pg = await doc.getPage(page)
-    const content = await pg.getTextContent()
-    const lines = new Map<number, string[]>()
-
-    content.items.forEach((item: any) => {
-      const text = item.str?.trim()
-      if (!text) return
-      const y = Math.round(item.transform?.[5] ?? 0)
-      if (!lines.has(y)) lines.set(y, [])
-      lines.get(y)!.push(text)
-    })
-
-    const pageText = Array.from(lines.entries())
-      .sort((a, b) => b[0] - a[0])
-      .map(([, words]) => words.join(' '))
-      .join('\n')
-      .trim()
-
-    if (pageText) chunks.push(`Page ${page}\n${pageText}`)
-  }
-
-  return chunks.join('\n\n').slice(0, 14000)
-}
-
 // ── AI recap ──────────────────────────────────────────────────
-async function generateRecap(book: Book, fromPage: number, toPage: number, pdfBuf: ArrayBuffer | null): Promise<RecapData> {
-  const excerpt = pdfBuf ? await extractPageRangeText(book.id, pdfBuf, fromPage, toPage).catch(() => '') : ''
+async function generateRecap(book: Book, fromPage: number, toPage: number): Promise<RecapData> {
   try {
     const res = await fetch((import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}.
-
-Use the page text below to summarize what they actually read. If the text is sparse, say what can be inferred from it, but do not ask the user to paste or upload anything.
-
-PAGE TEXT:
-${excerpt || '(No extractable text was found for these pages.)'}
-
-Respond ONLY with JSON:
-{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:`The user read "${book.title}" by ${book.author}, pages ${fromPage}–${toPage} of ${book.totalPages}. Respond ONLY with JSON:\n{"summary":["point 1","point 2","point 3"],"questions":["question 1","question 2"]}` }] })
     })
     const data = await res.json()
     if (data.error) throw new Error(data.error.message)
     const raw = data.choices?.[0]?.message?.content ?? (data.content??[]).map((x:any)=>x.text??'').join('')
     const p = JSON.parse(raw.replace(/```json|```/g,'').trim())
-    return {bookId:book.id,fromPage,toPage,summary:p.summary,questions:p.questions,excerpt}
+    return {bookId:book.id,fromPage,toPage,summary:p.summary,questions:p.questions}
   } catch {
-    return {bookId:book.id,fromPage,toPage,summary:[`You covered pages ${fromPage}–${toPage}.`,excerpt ? excerpt.slice(0, 220) : 'The PDF text could not be extracted clearly.','Keep going.'],questions:['What was the main idea?','How does it connect to what came before?'],excerpt}
+    return {bookId:book.id,fromPage,toPage,summary:[`You covered pages ${fromPage}–${toPage}.`,'Key ideas noted.','Keep going.'],questions:['What was the main idea?','How does it connect to what came before?']}
   }
 }
 
@@ -491,7 +446,7 @@ function RecapCard({ recap, onClose, onAsk }: { recap: RecapData; onClose: () =>
         ))}
         <div style={{display:'flex',gap:10,marginTop:24}}>
           <button onClick={onClose} style={{flex:1,padding:11,borderRadius:12,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',border:'0.5px solid var(--border)',background:'transparent',color:'var(--text-2)'}}>Back to shelf</button>
-          <button onClick={()=>onAsk()} style={{flex:1,padding:11,borderRadius:12,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',background:'linear-gradient(135deg,var(--accent),#7b6cf6)',color:'white',border:'none',boxShadow:'0 4px 16px var(--accent-glow)'}}>Continue in chat →</button>
+          <button onClick={()=>onAsk()} style={{flex:1,padding:11,borderRadius:12,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',background:'linear-gradient(135deg,var(--accent),#7b6cf6)',color:'white',border:'none',boxShadow:'0 4px 16px var(--accent-glow)'}}>Open AI chat →</button>
         </div>
       </div>
     </div>
@@ -616,7 +571,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
   const finishSession = async () => {
     if (!activeBook) return
     setRecapLoading(true)
-    const r = await generateRecap(activeBook,sessionStart,currentPage,activeBuf)
+    const r = await generateRecap(activeBook,sessionStart,currentPage)
     setRecap(r); setRecapLoading(false); setView('recap')
     if (typeof (window as any).__shh_generateCards==='function') {
       ;(window as any).__shh_generateCards(activeBook,sessionStart,currentPage)
@@ -749,11 +704,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
       {view==='recap' && recap && (
         <RecapCard recap={recap}
           onClose={()=>{setRecap(null);setView('shelf');setActiveBook(null);setActiveBuf(null)}}
-          onAsk={q=>{
-            const question = q ?? `Help me review pages ${recap.fromPage}-${recap.toPage} of ${activeBook?.title ?? 'this book'}. Start from the recap and keep going from there.`
-            setMaterial({book:activeBook ? {...activeBook,currentPage,totalPages} : null,recap,question})
-            setPage('chat')
-          }}/>
+          onAsk={q=>{setMaterial({book:activeBook,recap,question:q});setPage('chat')}}/>
       )}
     </>
   )

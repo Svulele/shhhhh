@@ -8,16 +8,16 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/Studyplan'
+import StudyPlan   from './pages/StudyPlan'
 import { registerSW } from './pwa'
 import { submitFeedback } from './supabase'
-import OnboardingTour from './pages/Onboardingtour'
+import OnboardingTour from './pages/OnboardingTour'
 import './App.css'
 
 export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan'
 export type Theme = 'dark' | 'light'
 
-export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'light', toggle: () => {} })
+export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'dark', toggle: () => {} })
 export const useTheme = () => useContext(ThemeCtx)
 
 // User context — pages use this to record study activity
@@ -36,30 +36,45 @@ export const NAV: { page: Page; icon: React.ReactNode }[] = [
 
 function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
   const isHome = page === 'dashboard'
-  const [hov, setHov] = useState(false)
+  // Always expanded on touch devices — collapse only on mouse/desktop
+  const [expanded, setExpanded] = useState(true)
+  const isTouch = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const enter = () => { if (isHome) return; if (timer.current) clearTimeout(timer.current); setHov(true) }
-  const leave = () => { if (isHome) return; timer.current = setTimeout(() => setHov(false), 350) }
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  useEffect(() => {
+    // Detect touch capability once on mount
+    isTouch.current = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+    setExpanded(isHome || isTouch.current)
+  }, [isHome])
 
-  const expanded = isHome || hov
+  const enter = () => {
+    if (isTouch.current) return
+    if (timer.current) clearTimeout(timer.current)
+    setExpanded(true)
+  }
+  const leave = () => {
+    if (isTouch.current || isHome) return
+    timer.current = setTimeout(() => setExpanded(false), 400)
+  }
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
   return (
     <nav className="float-nav" onMouseEnter={enter} onMouseLeave={leave}>
       {NAV.map(n => {
         const active  = n.page === page
-        const visible = expanded || active
+        const visible = expanded || active || isHome
         return (
           <button key={n.page}
             data-tour={n.page}
             className={`float-nav-item${active ? ' active' : ''}`}
-            onClick={() => { setPage(n.page); if (!isHome) setHov(false) }}
+            onClick={() => { setPage(n.page); if (!isHome && !isTouch.current) setExpanded(false) }}
             style={{
-              maxWidth: visible ? 52 : 0,
+              maxWidth: visible ? 48 : 0,
               opacity: visible ? 1 : 0,
               overflow: 'hidden', padding: 0,
-              transition: 'max-width 0.32s cubic-bezier(0.34,1.2,0.64,1), opacity 0.22s ease',
+              /* Minimum touch target 44px × 44px per Apple HIG */
+              minHeight: 44,
+              transition: 'max-width 0.3s var(--spring), opacity 0.2s ease',
               pointerEvents: visible ? 'auto' : 'none',
             }}>
             <div className="fnav-pill">{n.icon}</div>
@@ -75,7 +90,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
   const [material, setMaterial] = useState<any>(null)
   const [showTour, setShowTour] = useState(false)
   const [theme, setTheme]       = useState<Theme>(() =>
-    (localStorage.getItem('shh_theme') as Theme) ?? 'light'
+    (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
   )
 
   // Show tour after onboarding — poll for onboarded flag
@@ -259,7 +274,7 @@ export default function App() {
   const skipAuth = localStorage.getItem('shh_skip_auth') === '1'
 
   useEffect(() => {
-    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'light'
+    const t = (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
     document.documentElement.setAttribute('data-theme', t)
     registerSW().catch(console.warn)
   }, [])

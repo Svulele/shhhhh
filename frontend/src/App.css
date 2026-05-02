@@ -410,26 +410,32 @@ body::after {
 .float-nav {
   position: fixed;
   bottom: var(--nav-bottom); left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 1px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 0;
   background: var(--nav-bg);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
   border: 1px solid var(--border); border-top-color: var(--border-top);
-  border-radius: var(--r-pill); padding: 5px 7px;
+  border-radius: var(--r-pill); padding: 5px 8px;
   box-shadow: var(--nav-shadow); z-index: 999;
-  transition: box-shadow var(--dur-mid) var(--ease-in-out);
   will-change: transform;
-  /* Never wider than screen */
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 24px);
+  /* Prevent iOS tap delay */
+  touch-action: manipulation;
 }
 .float-nav-item {
   display: flex; align-items: center; justify-content: center;
   border: none; background: transparent; cursor: pointer;
   color: var(--text-3); flex-shrink: 0;
-  transition: max-width 0.35s var(--spring),
-              opacity   0.22s var(--ease-in-out),
+  /* 44px min tap target */
+  min-width: 44px; min-height: 44px;
+  transition: max-width 0.3s var(--spring),
+              opacity   0.2s var(--ease-in-out),
               color     var(--dur-mid) var(--ease-in-out);
   will-change: max-width, opacity;
+  /* Remove iOS button styling */
+  -webkit-appearance: none;
+  touch-action: manipulation;
 }
 .float-nav-item.active { color: var(--accent); }
 .float-nav-item.active .fnav-pill {
@@ -437,17 +443,19 @@ body::after {
   border: 1px solid var(--border-active);
 }
 .fnav-pill {
-  width: 38px; height: 38px; border-radius: 12px;
+  width: 40px; height: 40px; border-radius: 13px;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid transparent; flex-shrink: 0;
   transition: background  var(--dur-mid) var(--ease-in-out),
               border-color var(--dur-mid) var(--ease-in-out),
               transform   var(--dur-fast) var(--spring);
   will-change: transform, background;
+  pointer-events: none; /* click handled by parent button */
 }
 .float-nav-item svg {
-  width: 16px; height: 16px; stroke: currentColor; fill: none;
+  width: 17px; height: 17px; stroke: currentColor; fill: none;
   stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+  display: block; /* removes inline baseline gap */
 }
 
 /* ─────────────────────────────────────────────────────────────
