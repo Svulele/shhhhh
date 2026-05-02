@@ -8,7 +8,6 @@ interface PlanItem {
   title: string
   detail: string
   duration: number   // minutes
-  emoji?: string
   page?: Page
   done: boolean
 }
@@ -346,7 +345,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.title}</span>
-                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.color, fontWeight: 500 }}>{item.emoji ?? '•'} {item.duration}m</span>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.color, fontWeight: 500 }}>{item.emoji} {item.duration}m</span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 300, lineHeight: 1.5 }}>{item.detail}</div>
                     </div>

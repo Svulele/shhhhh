@@ -161,7 +161,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
           <FeedbackButton />
           {showTour && (
             <OnboardingTour
-              setPage={(p) => { navigate(p); }}
+              setPage={(p: Page) => { navigate(p) }}
               onDone={() => setShowTour(false)}
             />
           )}
@@ -174,7 +174,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
 // ── Mini timer pill — follows you across all pages ────────────
 function MiniTimer({ currentPage, setPage }: { currentPage: Page; setPage: (p: Page) => void }) {
   const [t, setT] = useState<TimerState>(timerStore.get)
-  useEffect(() => timerStore.subscribe(setT), [])
+  useEffect(() => { return timerStore.subscribe(setT) }, [])
 
   // Only show when running AND not already on the pomodoro page
   if (!t.running || currentPage === 'pomodoro') return null

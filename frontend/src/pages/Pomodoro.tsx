@@ -110,7 +110,7 @@ export function stopAlarm() {
 // ── Hook: subscribe to global timer ──────────────────────────
 function useTimerState() {
   const [state, setState] = useState<TimerState>(timerStore.get)
-  useEffect(() => timerStore.subscribe(setState), [])
+  useEffect(() => { return timerStore.subscribe(setState) }, [])
   return state
 }
 
