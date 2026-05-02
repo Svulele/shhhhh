@@ -99,8 +99,14 @@ async function callAI(msgs:Msg[],sys:string,onChunk:(t:string)=>void,onDone:()=>
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,system:sys,messages:msgs.map(m=>({role:m.role,content:m.content}))})
     })
     const data=await res.json()
+    if(!res.ok){
+      const msg = data.detail ?? data.error?.message ?? 'AI backend error.'
+      onErr(String(msg).match(/user not found|authentication|401/i) ? 'AI key is not working. Please update the OpenRouter key.' : String(msg))
+      return
+    }
     if(data.error){onErr(data.error.message?.match(/credit|billing|quota/i)?'API limit reached.':data.error.message);return}
     const text=data.choices?.[0]?.message?.content ?? (data.content??[]).map((c:any)=>c.text??'').join('')
+    if(!text.trim()){onErr('AI returned an empty response.');return}
     const words=text.split(' ')
     for(let i=0;i<words.length;i++){await new Promise(r=>setTimeout(r,14));onChunk((i===0?'':' ')+words[i])}
     onDone()

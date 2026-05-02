@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-import httpx
 import json
 import os
 import requests
-import time
 from pathlib import Path
 from json import JSONDecodeError
 
@@ -16,7 +14,7 @@ class Message(BaseModel):
     content: str
 
 class ChatRequest(BaseModel):
-    model: str = "anthropic/claude-sonnet-4-5"
+    model: str = "openrouter/auto"
     max_tokens: int = 1024
     system: str = ""
     messages: list[Message]
@@ -28,9 +26,14 @@ PERSONALITIES = {
     "hype": "You are an energetic hype partner! Use lots of energy and enthusiasm!",
 }
 
-FREE_MODEL_CACHE_TTL_SECONDS = 600
-_free_models_cache: list[str] = []
-_free_models_cache_expires_at = 0.0
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto").strip() or "openrouter/auto"
+MODEL_FALLBACKS = [
+    DEFAULT_MODEL,
+    "openrouter/auto",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+]
 
 
 def load_api_key() -> str:
@@ -74,16 +77,20 @@ def extract_error_message(data: object, status_code: int) -> str:
 
 def looks_like_unavailable_model(error_msg: str, status_code: int) -> bool:
     text = error_msg.lower()
-    return status_code in {400, 404} and (
+    return status_code in {400, 402, 404, 429} and (
         "no endpoints found" in text
         or "model not found" in text
         or "does not exist" in text
         or "unsupported model" in text
+        or "credit" in text
+        or "billing" in text
+        or "quota" in text
+        or "rate limit" in text
     )
 
 
 def expects_json_response(request: ChatRequest) -> bool:
-    combined = f"{request.system_prompt or ''}\n{request.message or ''}".lower()
+    combined = "\n".join([request.system, *[m.content for m in request.messages]]).lower()
     return "json" in combined and (
         "respond only" in combined
         or "reply only" in combined
@@ -125,38 +132,16 @@ def normalize_reply(reply: str, request: ChatRequest) -> str:
     return cleaned
 
 
-async def fetch_free_models(client: httpx.AsyncClient, headers: dict[str, str]) -> list[str]:
-    try:
-        res = await client.get("https://openrouter.ai/api/v1/models", headers=headers, timeout=20)
-        if res.status_code != 200:
-            return []
-        payload = res.json()
-        data = payload.get("data", []) if isinstance(payload, dict) else []
-        models = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            model_id = item.get("id")
-            if isinstance(model_id, str) and model_id.endswith(":free"):
-                models.append(model_id)
-        return models
-    except Exception:
-        return []
-
-
-async def get_cached_free_models(client: httpx.AsyncClient, headers: dict[str, str]) -> list[str]:
-    global _free_models_cache, _free_models_cache_expires_at
-
-    now = time.monotonic()
-    if _free_models_cache and now < _free_models_cache_expires_at:
-        return _free_models_cache
-
-    models = await fetch_free_models(client, headers)
-    if models:
-        _free_models_cache = models
-        _free_models_cache_expires_at = now + FREE_MODEL_CACHE_TTL_SECONDS
-
-    return models
+def model_candidates(requested: str) -> list[str]:
+    candidates = [requested, *MODEL_FALLBACKS]
+    seen = set()
+    ordered = []
+    for model in candidates:
+        clean = (model or "").strip()
+        if clean and clean not in seen:
+            seen.add(clean)
+            ordered.append(clean)
+    return ordered
 
 @router.post("")
 def chat(request: ChatRequest):
@@ -167,13 +152,9 @@ def chat(request: ChatRequest):
             detail="No backend API key found. Set OPENROUTER_API_KEY in Render environment variables or add key.env file.",
         )
 
-    payload = {
-        "model": "meta-llama/llama-3.3-70b-instruct:free",
-        "max_tokens": request.max_tokens,
-        "messages": [{"role": m.role, "content": m.content} for m in request.messages],
-    }
+    messages = [{"role": m.role, "content": m.content} for m in request.messages]
     if request.system:
-        payload["messages"] = [{"role": "system", "content": request.system}] + payload["messages"]
+        messages = [{"role": "system", "content": request.system}] + messages
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -182,16 +163,37 @@ def chat(request: ChatRequest):
         "X-Title": "Shhhhh Study Buddy",
     }
 
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
-    try:
-        data = response.json()
-    except ValueError:
-        raise HTTPException(status_code=502, detail="Invalid response from OpenRouter")
+    last_error = ""
+    for model in model_candidates(request.model):
+        payload = {
+            "model": model,
+            "max_tokens": request.max_tokens,
+            "messages": messages,
+        }
+        try:
+            response = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=45)
+            try:
+                data = response.json()
+            except ValueError:
+                last_error = "Invalid response from OpenRouter"
+                continue
 
-    if response.status_code != 200:
-        detail = data.get("error") or data.get("detail") or response.text
-        raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
+            if response.status_code == 200:
+                reply = data["choices"][0]["message"]["content"]
+                return {"content": [{"type": "text", "text": normalize_reply(reply, request)}]}
 
-    return {
-        "content": [{"type": "text", "text": data["choices"][0]["message"]["content"]}]
-    }
+            last_error = extract_error_message(data, response.status_code)
+            if status_code_is_auth_failure(response.status_code, last_error):
+                break
+            if not looks_like_unavailable_model(last_error, response.status_code):
+                break
+        except requests.RequestException as exc:
+            last_error = str(exc)
+            continue
+
+    raise HTTPException(status_code=502, detail=f"OpenRouter error: {last_error or 'No response'}")
+
+
+def status_code_is_auth_failure(status_code: int, error_msg: str) -> bool:
+    text = error_msg.lower()
+    return status_code in {401, 403} or "user not found" in text or "authentication" in text
