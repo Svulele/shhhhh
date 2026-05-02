@@ -168,7 +168,7 @@ def chat(request: ChatRequest):
         )
 
     payload = {
-        "model": "anthropic/claude-sonnet-4-5",
+        "model": "anthropic/claude-sonnet-4.5",
         "max_tokens": request.max_tokens,
         "messages": [{"role": m.role, "content": m.content} for m in request.messages],
     }
