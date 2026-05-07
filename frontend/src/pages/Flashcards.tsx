@@ -154,7 +154,7 @@ function SRSExplainer() {
       </button>
       {open && (
         <div style={{ marginTop:12,padding:'16px 18px',background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:14,fontSize:13,color:'var(--text-2)',lineHeight:1.7,fontWeight:300,animation:'fadeUp .2s ease both' }}>
-          <p style={{ marginBottom:10 }}>Cards are <strong style={{ fontWeight:500,color:'var(--text-1)' }}>automatically created</strong> when you finish a reading session in your Library. Claude reads the same pages you just read and generates questions about them.</p>
+          <p style={{ marginBottom:10 }}>Cards are <strong style={{ fontWeight:500,color:'var(--text-1)' }}>automatically created</strong> when you finish a reading session in your Library. Chatbot reads the same pages you just read and generates questions about them.</p>
           <p style={{ marginBottom:10 }}>When you review a card, you rate how well you knew it:</p>
           <div style={{ display:'flex',flexDirection:'column',gap:6,margin:'12px 0' }}>
             {[

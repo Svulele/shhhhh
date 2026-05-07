@@ -124,7 +124,7 @@ function PdfPage({ bookId, buf, pageNum, scale = 1.4, onLoad }: {
 }
 
 // ── Ebook page — text extraction with image detection ─────────
-function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onImagePage }: {
+function EbookPage({ bookId, buf, pageNum, totalPages, onLoad, onImagePage }: {
   bookId: string; buf: ArrayBuffer; pageNum: number; totalPages: number
   onLoad?: (n: number) => void; onImagePage?: () => void
 }) {
@@ -377,50 +377,97 @@ async function generateRecap(book: Book, fromPage: number, toPage: number): Prom
 }
 
 // ── Book card with three-dot menu ─────────────────────────────
-function BookCard({ book, hasPdf, onClick, onDelete }: { book: Book; hasPdf: boolean; onClick: () => void; onDelete: () => void }) {
+function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
+  book: Book; hasPdf: boolean
+  onClick: () => void; onDelete: () => void
+  onRename: (title: string, author: string) => void
+}) {
   const pct  = book.totalPages > 0 ? Math.round(book.currentPage/book.totalPages*100) : 0
   const done = pct >= 100
-  const [hov, setHov]   = useState(false)
-  const [menu, setMenu] = useState(false)
+  const [hov,  setHov]    = useState(false)
+  const [menu, setMenu]   = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [editTitle,  setEditTitle]  = useState(book.title)
+  const [editAuthor, setEditAuthor] = useState(book.author)
   const menuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!menu) return
     const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false) }
     document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
   }, [menu])
+
+  const saveRename = () => {
+    onRename(editTitle, editAuthor)
+    setRenaming(false)
+  }
+
   return (
-    <div style={{position:'relative'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
-      <button onClick={onClick} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,overflow:'hidden',cursor:'pointer',textAlign:'left',width:'100%',transition:'all .22s',transform:hov?'translateY(-3px)':'none',boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none'}}>
-        <div style={{height:110,background:book.coverGradient,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 19V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/></svg>
-          <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.25)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'rgba(255,255,255,.9)',fontWeight:500}}>{pct}%</span>
-          {!hasPdf && <span style={{position:'absolute',bottom:8,left:8,background:'rgba(0,0,0,.4)',borderRadius:6,padding:'2px 6px',fontSize:9,color:'rgba(255,255,255,.7)'}}>re-upload needed</span>}
-        </div>
-        <div style={{padding:'12px 14px 14px'}}>
-          <div style={{fontSize:13,fontWeight:500,color:'var(--text-1)',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.title}</div>
-          <div style={{fontSize:11,color:'var(--text-3)',marginBottom:10,fontWeight:300}}>{book.author}</div>
-          <div style={{height:3,background:'var(--text-4)',borderRadius:99,overflow:'hidden'}}>
-            <div style={{height:'100%',width:`${pct}%`,background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)',borderRadius:99,transition:'width .8s ease'}}/>
+    <>
+      {/* Rename modal */}
+      {renaming && (
+        <div onClick={()=>setRenaming(false)} style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(12px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:22,padding:'28px 28px 24px',width:'100%',maxWidth:380,boxShadow:'0 24px 64px rgba(0,0,0,.3)',animation:'scaleIn .2s var(--spring) both'}}>
+            <div style={{fontSize:16,fontWeight:500,color:'var(--text-1)',marginBottom:18}}>Edit book details</div>
+            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:20}}>
+              <div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5,letterSpacing:'0.5px'}}>Title</div>
+                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&saveRename()}
+                  style={{borderRadius:10,fontSize:14}} autoFocus/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5,letterSpacing:'0.5px'}}>Author</div>
+                <input value={editAuthor} onChange={e=>setEditAuthor(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&saveRename()}
+                  style={{borderRadius:10,fontSize:14}}/>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setRenaming(false)} style={{flex:1,padding:'10px',borderRadius:10,border:'0.5px solid var(--border)',background:'transparent',color:'var(--text-2)',fontSize:13,cursor:'pointer',fontFamily:'var(--font-body)'}}>Cancel</button>
+              <button onClick={saveRename} style={{flex:1,padding:'10px',borderRadius:10,background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',color:'white',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 14px var(--accent-glow)'}}>Save</button>
+            </div>
           </div>
         </div>
-      </button>
-      {/* Three-dot menu */}
-      <div ref={menuRef} style={{position:'absolute',top:8,right:8,zIndex:10}}>
-        <button onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:26,height:26,borderRadius:'50%',background:menu?'rgba(0,0,0,.45)':hov?'rgba(0,0,0,.3)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:hov||menu?1:0,transition:'all .18s',color:'white'}}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+      )}
+
+      <div style={{position:'relative'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+        <button onClick={onClick} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,overflow:'hidden',cursor:'pointer',textAlign:'left',width:'100%',transition:'all .22s',transform:hov?'translateY(-3px)':'none',boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none'}}>
+          <div style={{height:110,background:book.coverGradient,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 19V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/></svg>
+            <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.25)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'rgba(255,255,255,.9)',fontWeight:500}}>{pct}%</span>
+            {!hasPdf && <span style={{position:'absolute',bottom:8,left:8,background:'rgba(0,0,0,.4)',borderRadius:6,padding:'2px 6px',fontSize:9,color:'rgba(255,255,255,.7)'}}>re-upload needed</span>}
+          </div>
+          <div style={{padding:'12px 14px 14px'}}>
+            <div style={{fontSize:13,fontWeight:500,color:'var(--text-1)',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.title}</div>
+            <div style={{fontSize:11,color:'var(--text-3)',marginBottom:10,fontWeight:300,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.author}</div>
+            <div style={{height:3,background:'var(--text-4)',borderRadius:99,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${pct}%`,background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)',borderRadius:99,transition:'width .8s ease'}}/>
+            </div>
+          </div>
         </button>
-        {menu && (
-          <div style={{position:'absolute',top:30,right:0,background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:12,padding:'4px',minWidth:130,boxShadow:'0 8px 24px rgba(0,0,0,.2)',backdropFilter:'blur(16px)',zIndex:20}}>
-            <button onClick={e=>{e.stopPropagation();setMenu(false);onClick()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Open
-            </button>
-            <button onClick={e=>{e.stopPropagation();setMenu(false);onDelete()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'#f87171',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(239,68,68,.08)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete
-            </button>
-          </div>
-        )}
+
+        {/* Three-dot menu */}
+        <div ref={menuRef} style={{position:'absolute',top:8,right:8,zIndex:10}}>
+          <button onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:26,height:26,borderRadius:'50%',background:menu?'rgba(0,0,0,.45)':hov?'rgba(0,0,0,.3)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:hov||menu?1:0,transition:'all .18s',color:'white'}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+          {menu && (
+            <div style={{position:'absolute',top:30,right:0,background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:12,padding:'4px',minWidth:140,boxShadow:'0 8px 24px rgba(0,0,0,.2)',backdropFilter:'blur(16px)',zIndex:20}}>
+              <button onClick={e=>{e.stopPropagation();setMenu(false);onClick()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Open
+              </button>
+              <button onClick={e=>{e.stopPropagation();setMenu(false);setEditTitle(book.title);setEditAuthor(book.author);setRenaming(true)}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Rename
+              </button>
+              <button onClick={e=>{e.stopPropagation();setMenu(false);onDelete()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'#f87171',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(239,68,68,.08)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -461,6 +508,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
   const [pdfMap,setPdfMap]             = useState<Map<string,ArrayBuffer>>(new Map())
   const [view,setView]                 = useState<LibView>('shelf')
   const [filter,setFilter]             = useState<ShelfFilter>('all')
+  const [search,setSearch]             = useState('')
   const [activeBook,setActiveBook]     = useState<Book|null>(null)
   const [activeBuf,setActiveBuf]       = useState<ArrayBuffer|null>(null)
   const [currentPage,setCurrentPage]   = useState(1)
@@ -587,11 +635,17 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     if(activeBook?.id===id){setView('shelf');setActiveBook(null);setActiveBuf(null)}
   }
 
-  const filtered = books.filter(b=>{
-    if(!b.totalPages) return filter==='all'
-    const p=b.currentPage/b.totalPages
-    if(filter==='progress') return p>0&&p<1
-    if(filter==='finished') return p>=1
+  const renameBook = (id: string, title: string, author: string) => {
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, title: title.trim() || b.title, author: author.trim() || b.author } : b))
+  }
+
+  const filtered = books.filter(b => {
+    const q = search.toLowerCase()
+    if (q && !b.title.toLowerCase().includes(q) && !b.author.toLowerCase().includes(q)) return false
+    if (!b.totalPages) return filter === 'all'
+    const p = b.currentPage / b.totalPages
+    if (filter === 'progress') return p > 0 && p < 1
+    if (filter === 'finished') return p >= 1
     return true
   })
   const pct = totalPages>0 ? Math.round(currentPage/totalPages*100) : 0
@@ -608,6 +662,26 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             {books.length} book{books.length!==1?'s':''}
             {books.filter(b=>b.currentPage>1&&b.totalPages>1&&b.currentPage<b.totalPages).length>0?` · ${books.filter(b=>b.currentPage>1&&b.currentPage<b.totalPages).length} in progress`:''}
           </div>
+
+          {/* Search bar */}
+          {books.length > 2 && (
+            <div style={{position:'relative',marginBottom:16}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round" style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search books and authors…"
+                style={{paddingLeft:36,borderRadius:12,fontSize:13}}
+              />
+              {search && (
+                <button onClick={()=>setSearch('')} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',display:'flex',alignItems:'center',padding:2}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{display:'flex',gap:6,marginBottom:22}}>
             <button style={tabStyle(filter==='all')} onClick={()=>setFilter('all')}>All</button>
             <button style={tabStyle(filter==='progress')} onClick={()=>setFilter('progress')}>In progress</button>
@@ -629,7 +703,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:14}}>
             {filtered.map(book=>(
               <div key={book.id}>
-                <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)}/>
+                <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)} onRename={(t,a)=>renameBook(book.id,t,a)}/>
               </div>
             ))}
           </div>
