@@ -10,6 +10,7 @@ interface PlanItem {
   duration: number   // minutes
   page?: Page
   done: boolean
+  emoji?: string
 }
 
 interface DayPlan {

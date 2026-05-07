@@ -147,7 +147,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
         <div className="app">
           <div className={isHome ? 'main-home' : 'main'} key={page}>
             <div className="page-enter">
-              {page === 'dashboard'  && <Dashboard material={material} setPage={navigate} />}
+              {page === 'dashboard'  && <Dashboard setPage={navigate} />}
               {page === 'library'    && <Library setMaterial={setMaterial} setPage={navigate} />}
               {page === 'chat'       && <Chat material={material} />}
               {page === 'pomodoro'   && <Pomodoro />}

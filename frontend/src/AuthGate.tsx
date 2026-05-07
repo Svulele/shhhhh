@@ -318,14 +318,11 @@ function AuthForm({ onBack }: { onBack: () => void }) {
     setBusy(true); setErr(null)
     try {
       if (mode === 'login') {
-        const { error } = await signInWithEmail(email, pass)
-        if (error) throw error
+    await signInWithEmail(email, pass)
         // onAuthStateChange will handle navigating to app
       } else {
-        const { data, error } = await signUpWithEmail(email, pass)
-        if (error) throw error
-        // If Supabase requires email confirmation, session will be null
-        if (data?.user && !data?.session) {
+       const result = await signUpWithEmail(email, pass)
+if (result?.user && !result?.session) {
           // Email confirmation required — show message, don't stay stuck
           setErr(null)
           setBusy(false)
@@ -457,6 +454,8 @@ export default function AuthGate({ children }: Props) {
   const currentUid = useRef<string|null>(null)
 
   useEffect(() => {
+    if (!supabase) { setScreen('landing'); return }
+
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       if (u) handleReady(u)
