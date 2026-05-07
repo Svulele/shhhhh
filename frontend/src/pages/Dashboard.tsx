@@ -3,6 +3,124 @@ import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
 
+// ── Confetti ──────────────────────────────────────────────────
+function fireConfetti() {
+  const canvas = document.createElement('canvas')
+  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;width:100%;height:100%'
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight
+  document.body.appendChild(canvas)
+  const ctx = canvas.getContext('2d')!
+  const colours = ['#7b9ef5','#b07ef7','#3ecfa0','#f59e0b','#f87171','#38bdf8']
+  const pieces = Array.from({length:120},(_,i)=>({
+    x: Math.random()*canvas.width, y: -20 - Math.random()*200,
+    r: 4+Math.random()*5, c: colours[i%colours.length],
+    vx: (Math.random()-0.5)*4, vy: 2+Math.random()*4,
+    spin: (Math.random()-0.5)*0.2, angle: Math.random()*Math.PI*2,
+    opacity: 1,
+  }))
+  let frame = 0
+  const tick = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height)
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.angle += p.spin; p.opacity -= 0.008
+      ctx.save(); ctx.globalAlpha = Math.max(0,p.opacity)
+      ctx.translate(p.x,p.y); ctx.rotate(p.angle)
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r)
+      ctx.restore()
+    })
+    frame++
+    if (frame < 160) requestAnimationFrame(tick)
+    else canvas.remove()
+  }
+  requestAnimationFrame(tick)
+}
+
+// ── Streak milestone overlay ──────────────────────────────────
+const MILESTONES = [3,7,14,30,60,100]
+
+function MilestoneOverlay({ streak, name, onDismiss }: { streak:number; name:string; onDismiss:()=>void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    fireConfetti()
+    const t = setTimeout(onDismiss, 6000)
+    return () => clearTimeout(t)
+  }, [])
+
+  const handleShare = () => {
+    const canvas = canvasRef.current; if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    // Draw share card
+    const W = 600, H = 320
+    canvas.width = W; canvas.height = H
+    // Background
+    const grad = ctx.createLinearGradient(0,0,W,H)
+    grad.addColorStop(0,'#0d0d1a'); grad.addColorStop(1,'#1a1030')
+    ctx.fillStyle = grad; ctx.fillRect(0,0,W,H)
+    // Accent bar top
+    const bar = ctx.createLinearGradient(0,0,W,0)
+    bar.addColorStop(0,'#7b9ef5'); bar.addColorStop(1,'#b07ef7')
+    ctx.fillStyle = bar; ctx.fillRect(0,0,W,4)
+    // Logo
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.font = 'italic 18px serif'
+    ctx.fillText('Shhhhh', 36, 48)
+    // Big number
+    ctx.fillStyle = '#7b9ef5'
+    ctx.font = `bold 96px serif`
+    ctx.fillText(String(streak), 36, 170)
+    // Day streak text
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'
+    ctx.font = '28px sans-serif'
+    ctx.fillText('day streak 🔥', 36 + ctx.measureText(String(streak)).width + 12, 160)
+    // Name
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '16px sans-serif'
+    ctx.fillText(`${name} is on a roll with Shhhhh`, 36, 220)
+    // URL
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '13px sans-serif'
+    ctx.fillText('shhhhh-ten.vercel.app', 36, 290)
+
+    canvas.toBlob(blob => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url
+      a.download = `shhhhh-${streak}-day-streak.png`; a.click()
+      URL.revokeObjectURL(url)
+    })
+  }
+
+  return (
+    <div onClick={onDismiss} style={{position:'fixed',inset:0,zIndex:9800,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(16px)',animation:'fadeIn .3s ease both'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'0.5px solid var(--border-active)',borderRadius:28,padding:'40px 44px 36px',maxWidth:360,width:'90vw',textAlign:'center',boxShadow:'0 32px 80px rgba(0,0,0,.5)',animation:'scaleIn .35s var(--spring) both'}}>
+        {/* Hidden canvas for share card */}
+        <canvas ref={canvasRef} style={{display:'none'}}/>
+
+        <div style={{fontFamily:'var(--font-display)',fontSize:72,letterSpacing:'-4px',color:'var(--accent)',lineHeight:1,marginBottom:4}}>
+          {streak}
+        </div>
+        <div style={{fontFamily:'var(--font-display)',fontSize:22,color:'var(--text-1)',marginBottom:8,letterSpacing:'-0.3px'}}>
+          day streak 🔥
+        </div>
+        <div style={{fontSize:14,color:'var(--text-3)',fontWeight:300,lineHeight:1.65,marginBottom:28}}>
+          {streak >= 30 ? "A whole month. That's incredible dedication." :
+           streak >= 14 ? "Two weeks straight. You're building something real." :
+           streak >= 7  ? "One full week. The habit is forming." :
+                          "Three days in a row. Keep it going!"}
+        </div>
+
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={handleShare} style={{flex:1,padding:'11px',borderRadius:12,background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',justifyContent:'center',gap:7,touchAction:'manipulation'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Share
+          </button>
+          <button onClick={onDismiss} style={{flex:1,padding:'11px',borderRadius:12,background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',color:'white',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 14px var(--accent-glow)',touchAction:'manipulation'}}>
+            Keep going!
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Types ─────────────────────────────────────────────────────
 interface Profile {
   name: string; ai: string; vibe: string; goals: string[]
@@ -410,12 +528,13 @@ function WeatherPill({ lat, lon, locationName }: { lat:number; lon:number; locat
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export default function Dashboard({ material: _material, setPage }: { material:any; setPage:(p:Page)=>void }) {
+export default function Dashboard({ material, setPage }: { material:any; setPage:(p:Page)=>void }) {
   const { theme, toggle } = useTheme()
   const { user }          = useUser()
   const [profile,  setProfile]  = useState<Profile|null>(null)
   const [streak,   setStreak]   = useState(0)
   const [greeting, setGreeting] = useState('')
+  const [showMilestone, setShowMilestone] = useState(false)
 
   const quote   = getQuoteOfDay()
   const session = (()=>{try{return JSON.parse(localStorage.getItem('shh_session')??'null')}catch{return null}})()
@@ -430,7 +549,17 @@ export default function Dashboard({ material: _material, setPage }: { material:a
   useEffect(()=>{
     if(user){
       recordStudyDay(user.id).catch(console.warn)
-      getStreak(user.id).then(s=>{setStreak(s);localStorage.setItem('shh_streak',String(s))}).catch(()=>setStreak(Number(localStorage.getItem('shh_streak')??0)))
+      getStreak(user.id).then(s=>{
+        setStreak(s)
+        localStorage.setItem('shh_streak',String(s))
+        // Check if this is a milestone AND we haven't shown it today
+        const lastShown = localStorage.getItem('shh_milestone_shown')
+        const today = new Date().toISOString().split('T')[0]
+        if (MILESTONES.includes(s) && lastShown !== `${today}-${s}`) {
+          setTimeout(() => setShowMilestone(true), 1200) // slight delay for drama
+          localStorage.setItem('shh_milestone_shown', `${today}-${s}`)
+        }
+      }).catch(()=>setStreak(Number(localStorage.getItem('shh_streak')??0)))
     } else {
       setStreak(Number(localStorage.getItem('shh_streak')??0))
     }
@@ -449,6 +578,13 @@ export default function Dashboard({ material: _material, setPage }: { material:a
 
   return (
     <>
+      {showMilestone && (
+        <MilestoneOverlay
+          streak={streak}
+          name={firstName}
+          onDismiss={() => setShowMilestone(false)}
+        />
+      )}
       {/* ── Topbar ── */}
       <div className="home-topbar">
         <div className="home-logo">Shhhhh</div>

@@ -6,6 +6,7 @@ interface Book {
   id: string; title: string; author: string
   totalPages: number; currentPage: number
   coverGradient: string; addedAt: number
+  goalDate?: string   // ISO date string "YYYY-MM-DD"
 }
 interface Note { id: string; bookId: string; page: number; text: string; createdAt: number }
 interface RecapData { bookId: string; fromPage: number; toPage: number; summary: string[]; questions: string[] }
@@ -380,7 +381,7 @@ async function generateRecap(book: Book, fromPage: number, toPage: number): Prom
 function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
   book: Book; hasPdf: boolean
   onClick: () => void; onDelete: () => void
-  onRename: (title: string, author: string) => void
+  onRename: (title: string, author: string, goalDate?: string) => void
 }) {
   const pct  = book.totalPages > 0 ? Math.round(book.currentPage/book.totalPages*100) : 0
   const done = pct >= 100
@@ -389,7 +390,14 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
   const [renaming, setRenaming] = useState(false)
   const [editTitle,  setEditTitle]  = useState(book.title)
   const [editAuthor, setEditAuthor] = useState(book.author)
+  const [editGoal,   setEditGoal]   = useState(book.goalDate ?? '')
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Pages per day calculation
+  const pagesLeft    = book.totalPages - book.currentPage
+  const daysLeft     = book.goalDate ? Math.max(1, Math.ceil((new Date(book.goalDate).getTime() - Date.now()) / 86400000)) : null
+  const pagesPerDay  = daysLeft && pagesLeft > 0 ? Math.ceil(pagesLeft / daysLeft) : null
+  const goalOverdue  = book.goalDate && new Date(book.goalDate) < new Date() && pct < 100
 
   useEffect(() => {
     if (!menu) return
@@ -398,29 +406,42 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
   }, [menu])
 
   const saveRename = () => {
-    onRename(editTitle, editAuthor)
+    onRename(editTitle, editAuthor, editGoal || undefined)
     setRenaming(false)
   }
 
   return (
     <>
-      {/* Rename modal */}
+      {/* Rename / goal modal */}
       {renaming && (
         <div onClick={()=>setRenaming(false)} style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(12px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:22,padding:'28px 28px 24px',width:'100%',maxWidth:380,boxShadow:'0 24px 64px rgba(0,0,0,.3)',animation:'scaleIn .2s var(--spring) both'}}>
             <div style={{fontSize:16,fontWeight:500,color:'var(--text-1)',marginBottom:18}}>Edit book details</div>
             <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:20}}>
               <div>
-                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5,letterSpacing:'0.5px'}}>Title</div>
-                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&saveRename()}
-                  style={{borderRadius:10,fontSize:14}} autoFocus/>
+                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5}}>Title</div>
+                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveRename()} style={{borderRadius:10,fontSize:14}} autoFocus/>
               </div>
               <div>
-                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5,letterSpacing:'0.5px'}}>Author</div>
-                <input value={editAuthor} onChange={e=>setEditAuthor(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&saveRename()}
-                  style={{borderRadius:10,fontSize:14}}/>
+                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5}}>Author</div>
+                <input value={editAuthor} onChange={e=>setEditAuthor(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveRename()} style={{borderRadius:10,fontSize:14}}/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginBottom:5}}>
+                  Finish by <span style={{color:'var(--text-4)'}}>— optional</span>
+                </div>
+                <input type="date" value={editGoal} onChange={e=>setEditGoal(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{borderRadius:10,fontSize:14,colorScheme:'dark'}}/>
+                {editGoal && book.totalPages > 0 && (
+                  <div style={{fontSize:11,color:'var(--accent)',marginTop:6}}>
+                    {(() => {
+                      const d = Math.max(1, Math.ceil((new Date(editGoal).getTime()-Date.now())/86400000))
+                      const p = Math.ceil((book.totalPages-book.currentPage)/d)
+                      return `~${p} page${p!==1?'s':''}/day to finish in ${d} day${d!==1?'s':''}`
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
             <div style={{display:'flex',gap:8}}>
@@ -440,7 +461,14 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
           </div>
           <div style={{padding:'12px 14px 14px'}}>
             <div style={{fontSize:13,fontWeight:500,color:'var(--text-1)',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.title}</div>
-            <div style={{fontSize:11,color:'var(--text-3)',marginBottom:10,fontWeight:300,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.author}</div>
+            <div style={{fontSize:11,color:'var(--text-3)',marginBottom:6,fontWeight:300,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.author}</div>
+            {/* Goal badge */}
+            {pagesPerDay && !done && (
+              <div style={{fontSize:10,color:goalOverdue?'#f87171':'var(--accent)',marginBottom:6,display:'flex',alignItems:'center',gap:4}}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {goalOverdue ? 'Goal overdue!' : `${pagesPerDay} pg/day`}
+              </div>
+            )}
             <div style={{height:3,background:'var(--text-4)',borderRadius:99,overflow:'hidden'}}>
               <div style={{height:'100%',width:`${pct}%`,background:done?'linear-gradient(90deg,#3ecfa0,#2aad82)':'linear-gradient(90deg,var(--accent),#b07ef7)',borderRadius:99,transition:'width .8s ease'}}/>
             </div>
@@ -457,8 +485,8 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
               <button onClick={e=>{e.stopPropagation();setMenu(false);onClick()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Open
               </button>
-              <button onClick={e=>{e.stopPropagation();setMenu(false);setEditTitle(book.title);setEditAuthor(book.author);setRenaming(true)}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Rename
+              <button onClick={e=>{e.stopPropagation();setMenu(false);setEditTitle(book.title);setEditAuthor(book.author);setEditGoal(book.goalDate??'');setRenaming(true)}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Rename & goal
               </button>
               <button onClick={e=>{e.stopPropagation();setMenu(false);onDelete()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'#f87171',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(239,68,68,.08)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete
@@ -635,8 +663,8 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     if(activeBook?.id===id){setView('shelf');setActiveBook(null);setActiveBuf(null)}
   }
 
-  const renameBook = (id: string, title: string, author: string) => {
-    setBooks(prev => prev.map(b => b.id === id ? { ...b, title: title.trim() || b.title, author: author.trim() || b.author } : b))
+  const renameBook = (id: string, title: string, author: string, goalDate?: string) => {
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, title: title.trim() || b.title, author: author.trim() || b.author, goalDate } : b))
   }
 
   const filtered = books.filter(b => {
@@ -703,7 +731,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:14}}>
             {filtered.map(book=>(
               <div key={book.id}>
-                <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)} onRename={(t,a)=>renameBook(book.id,t,a)}/>
+                <BookCard book={book} hasPdf={pdfMap.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)} onRename={(t,a,g)=>renameBook(book.id,t,a,g)}/>
               </div>
             ))}
           </div>

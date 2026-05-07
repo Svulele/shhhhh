@@ -10,7 +10,6 @@ interface PlanItem {
   duration: number   // minutes
   page?: Page
   done: boolean
-  emoji?: string    // for backward compatibility with old plans that don't have this field 
 }
 
 interface DayPlan {
@@ -70,6 +69,12 @@ async function generatePlan(): Promise<DayPlan> {
 
   // Build context for AI
   const inProgress = books.filter((b: any) => b.currentPage > 1 && b.currentPage < b.totalPages)
+  const booksWithGoals = inProgress.filter((b: any) => b.goalDate).map((b: any) => {
+    const daysLeft = Math.max(1, Math.ceil((new Date(b.goalDate).getTime() - Date.now()) / 86400000))
+    const pagesLeft = b.totalPages - b.currentPage
+    const ppd = Math.ceil(pagesLeft / daysLeft)
+    return `"${b.title}" — goal: ${b.goalDate} (${ppd} pg/day, ${daysLeft} days left)`
+  })
   const dueCards   = cards.filter((c: any) => c.nextReview && c.nextReview <= Date.now()).length
   const todaySecs  = timeData[today] ?? 0
   const weekSecs   = Object.entries(timeData)
@@ -80,6 +85,7 @@ async function generatePlan(): Promise<DayPlan> {
 User: ${profile.name || 'student'}, vibe: ${profile.vibe || 'balanced'}, goals: ${profile.goals?.join(', ') || 'general study'}
 Streak: ${streak} days
 Books in progress: ${inProgress.map((b: any) => `"${b.title}" (${b.currentPage}/${b.totalPages} pages, ${Math.round(b.currentPage/b.totalPages*100)}%)`).join(', ') || 'none'}
+${booksWithGoals.length ? `Reading goals:\n${booksWithGoals.join('\n')}` : ''}
 Flashcards due for review: ${dueCards}
 Study time today: ${Math.round(todaySecs / 60)} minutes
 Study time this week: ${Math.round(weekSecs / 3600 * 10) / 10} hours

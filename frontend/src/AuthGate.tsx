@@ -205,6 +205,17 @@ const FEATURES = [
 
 // ── Landing page ──────────────────────────────────────────────
 function Landing({ onStart }: { onStart: () => void }) {
+  // Independent theme state for landing — syncs with app theme
+  const [dark, setDark] = useState(() => {
+    return (localStorage.getItem('shh_theme') ?? 'dark') === 'dark'
+  })
+  const toggleTheme = () => {
+    const next = dark ? 'light' : 'dark'
+    setDark(!dark)
+    localStorage.setItem('shh_theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+  }
+
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', position:'relative', overflow:'hidden' }}>
       <div style={{ position:'fixed', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,var(--orb-1) 0%,transparent 70%)', top:-200, right:-150, filter:'blur(100px)', pointerEvents:'none' }}/>
@@ -214,9 +225,19 @@ function Landing({ onStart }: { onStart: () => void }) {
         {/* Topbar */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'28px 0 0' }}>
           <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontStyle:'italic', color:'var(--text-1)' }}>Shhhhh</div>
-          <button onClick={onStart} style={{ padding:'8px 20px', borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontSize:13, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s' }}>
-            Sign in
-          </button>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            {/* Theme toggle */}
+            <button onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'}
+              style={{ width:36, height:36, borderRadius:'50%', border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}>
+              {dark
+                ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              }
+            </button>
+            <button onClick={onStart} style={{ padding:'8px 20px', borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontSize:13, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s' }}>
+              Sign in
+            </button>
+          </div>
         </div>
 
         {/* Hero */}
@@ -274,7 +295,7 @@ function Landing({ onStart }: { onStart: () => void }) {
             Start now — it's free
           </button>
         </div>
-        <p style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:28, fontWeight:300 }}>
+      <p style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:28, fontWeight:300 }}>
           Built with love by Svulele — for someone who inspired it.
           <br />Your data stays on your device.
         </p>
@@ -297,10 +318,12 @@ function AuthForm({ onBack }: { onBack: () => void }) {
     setBusy(true); setErr(null)
     try {
       if (mode === 'login') {
-        await signInWithEmail(email, pass)
+        const { error } = await signInWithEmail(email, pass)
+        if (error) throw error
         // onAuthStateChange will handle navigating to app
       } else {
-        const data = await signUpWithEmail(email, pass)
+        const { data, error } = await signUpWithEmail(email, pass)
+        if (error) throw error
         // If Supabase requires email confirmation, session will be null
         if (data?.user && !data?.session) {
           // Email confirmation required — show message, don't stay stuck
@@ -434,7 +457,6 @@ export default function AuthGate({ children }: Props) {
   const currentUid = useRef<string|null>(null)
 
   useEffect(() => {
-    if (!supabase) return
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       if (u) handleReady(u)
