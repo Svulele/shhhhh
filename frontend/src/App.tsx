@@ -8,11 +8,11 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/StudyPlan'
+import StudyPlan   from './pages/Studyplan'
 import Notes       from './pages/Notes'
 import { registerSW } from './pwa'
 import { submitFeedback } from './supabase'
-import OnboardingTour from './pages/OnboardingTour'
+import OnboardingTour from './pages/Onboardingtour'
 import { timerStore } from './timerStore'
 import type { TimerState } from './timerStore'
 import './App.css'
@@ -152,7 +152,7 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
         <div className="app">
           <div className={isHome ? 'main-home' : 'main'} key={page}>
             <div className="page-enter">
-              {page === 'dashboard'  && <Dashboard material={material} setPage={navigate} />}
+              {page === 'dashboard'  && <Dashboard setPage={navigate} />}
               {page === 'library'    && <Library setMaterial={setMaterial} setPage={navigate} />}
               {page === 'chat'       && <Chat material={material} />}
               {page === 'pomodoro'   && <Pomodoro />}
