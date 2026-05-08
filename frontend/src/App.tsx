@@ -8,15 +8,16 @@ import Chat from './pages/Chat'
 import Pomodoro from './pages/Pomodoro'
 import Settings    from './pages/Settings'
 import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/Studyplan'
+import StudyPlan   from './pages/StudyPlan'
+import Notes       from './pages/Notes'
 import { registerSW } from './pwa'
 import { submitFeedback } from './supabase'
-import OnboardingTour from './pages/Onboardingtour'
-import { timerStore } from './/timerStore'
-import type { TimerState } from './/timerStore'
+import OnboardingTour from './pages/OnboardingTour'
+import { timerStore } from './timerStore'
+import type { TimerState } from './timerStore'
 import './App.css'
 
-export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan'
+export type Page  = 'dashboard' | 'library' | 'chat' | 'pomodoro' | 'settings' | 'flashcards' | 'plan' | 'notes'
 export type Theme = 'dark' | 'light'
 
 export const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'dark', toggle: () => {} })
@@ -36,15 +37,19 @@ export const NAV: { page: Page; icon: React.ReactNode }[] = [
   { page: 'settings',   icon: <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
 ]
 
+const NAV_LABELS: Record<string, string> = {
+  dashboard: 'Home', library: 'Library', chat: 'Chat',
+  flashcards: 'Cards', pomodoro: 'Focus', plan: 'Plan',
+  settings: 'Me',
+}
+
 function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
-  const isHome = page === 'dashboard'
-  // Always expanded on touch devices — collapse only on mouse/desktop
-  const [expanded, setExpanded] = useState(true)
+  const isHome  = page === 'dashboard'
   const isTouch = useRef(false)
+  const [expanded, setExpanded] = useState(true)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Detect touch capability once on mount
     isTouch.current = window.matchMedia('(hover: none) and (pointer: coarse)').matches
     setExpanded(isHome || isTouch.current)
   }, [isHome])
@@ -56,7 +61,7 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
   }
   const leave = () => {
     if (isTouch.current || isHome) return
-    timer.current = setTimeout(() => setExpanded(false), 400)
+    timer.current = setTimeout(() => setExpanded(false), 500)
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
@@ -66,20 +71,20 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
         const active  = n.page === page
         const visible = expanded || active || isHome
         return (
-          <button key={n.page}
+          <button
+            key={n.page}
             data-tour={n.page}
-            className={`float-nav-item${active ? ' active' : ''}`}
-            onClick={() => { setPage(n.page); if (!isHome && !isTouch.current) setExpanded(false) }}
-            style={{
-              maxWidth: visible ? 48 : 0,
-              opacity: visible ? 1 : 0,
-              overflow: 'hidden', padding: 0,
-              /* Minimum touch target 44px × 44px per Apple HIG */
-              minHeight: 44,
-              transition: 'max-width 0.3s var(--spring), opacity 0.2s ease',
-              pointerEvents: visible ? 'auto' : 'none',
-            }}>
-            <div className="fnav-pill">{n.icon}</div>
+            className={`float-nav-item ${active ? 'active' : ''} ${visible ? 'visible' : 'hidden'}`}
+            onClick={() => {
+              setPage(n.page)
+              if (!isHome && !isTouch.current) setExpanded(false)
+            }}
+            aria-label={NAV_LABELS[n.page]}
+          >
+            <div className="fnav-pill">
+              {n.icon}
+              <span className="fnav-label">{NAV_LABELS[n.page]}</span>
+            </div>
           </button>
         )
       })}
@@ -147,13 +152,14 @@ function AppShell({ user, doSignOut }: { user: User | null; doSignOut: () => voi
         <div className="app">
           <div className={isHome ? 'main-home' : 'main'} key={page}>
             <div className="page-enter">
-              {page === 'dashboard'  && <Dashboard setPage={navigate} />}
+              {page === 'dashboard'  && <Dashboard material={material} setPage={navigate} />}
               {page === 'library'    && <Library setMaterial={setMaterial} setPage={navigate} />}
               {page === 'chat'       && <Chat material={material} />}
               {page === 'pomodoro'   && <Pomodoro />}
               {page === 'settings'   && <Settings doSignOut={doSignOut} />}
               {page === 'flashcards' && <Flashcards />}
               {page === 'plan'       && <StudyPlan setPage={navigate} />}
+              {page === 'notes'      && <Notes />}
             </div>
           </div>
           <FloatingNav page={page} setPage={navigate} />

@@ -528,7 +528,7 @@ function WeatherPill({ lat, lon, locationName }: { lat:number; lon:number; locat
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
+export default function Dashboard({ material, setPage }: { material:any; setPage:(p:Page)=>void }) {
   const { theme, toggle } = useTheme()
   const { user }          = useUser()
   const [profile,  setProfile]  = useState<Profile|null>(null)
@@ -572,8 +572,10 @@ export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
   const quickCards = [
     {label:'Ask the AI',   sub:'Explain, quiz, summarise',  page:'chat'      as Page,color:'#7b9ef5',bg:'rgba(99,140,245,.1)',   border:'rgba(99,140,245,.2)',   icon:<svg viewBox="0 0 24 24" stroke="#7b9ef5" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>},
     {label:'My library',   sub:'Books, notes, uploads',      page:'library'   as Page,color:'#b07ef7',bg:'rgba(160,100,220,.09)',border:'rgba(160,100,220,.18)', icon:<svg viewBox="0 0 24 24" stroke="#b07ef7" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/></svg>},
+    {label:'My notes',     sub:'Search & export notes',      page:'notes'     as Page,color:'#38bdf8',bg:'rgba(56,189,248,.09)', border:'rgba(56,189,248,.16)',  icon:<svg viewBox="0 0 24 24" stroke="#38bdf8" fill="none" strokeWidth="1.75" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>},
     {label:'Start focus',  sub:'Pomodoro + sounds',          page:'pomodoro'  as Page,color:'#3ecfa0',bg:'rgba(40,180,130,.09)',  border:'rgba(40,180,130,.16)',  icon:<svg viewBox="0 0 24 24" stroke="#3ecfa0" fill="none" strokeWidth="1.75" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>},
-    {label:'Today\'s plan', sub:'Your AI study schedule',   page:'plan'      as Page,color:'#f0a040',bg:'rgba(240,160,60,.09)',  border:'rgba(240,160,60,.16)',  icon:<svg viewBox="0 0 24 24" stroke="#f0a040" fill="none" strokeWidth="1.75" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+    {label:"Today's plan", sub:'Your AI study schedule',     page:'plan'      as Page,color:'#f0a040',bg:'rgba(240,160,60,.09)',  border:'rgba(240,160,60,.16)',  icon:<svg viewBox="0 0 24 24" stroke="#f0a040" fill="none" strokeWidth="1.75" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+    {label:'Flashcards',   sub:'Review what you read',       page:'flashcards'as Page,color:'#a78bfa',bg:'rgba(130,100,240,.09)',border:'rgba(130,100,240,.16)', icon:<svg viewBox="0 0 24 24" stroke="#a78bfa" fill="none" strokeWidth="1.75" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/></svg>},
   ]
 
   return (
