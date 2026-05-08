@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { recordStudyEvent } from '../studyHistory'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book { id: string; title: string; author: string; totalPages: number; currentPage: number }
@@ -11,6 +12,7 @@ interface Card {
   nextReview: number   // 0 = due now
   interval: number     // days until next review
   reviewCount: number
+  reviewedAt?: number
 }
 
 // ── Storage ───────────────────────────────────────────────────
@@ -223,7 +225,15 @@ export default function Flashcards() {
 
   const rate = (d: 'easy' | 'medium' | 'hard') => {
     if (!current) return
-    setCards(prev => prev.map(c => c.id === current.id ? { ...c, ...schedule(current, d) } : c))
+    recordStudyEvent({
+      type: 'flashcard',
+      bookId: current.bookId,
+      bookTitle: current.bookTitle,
+      fromPage: current.fromPage,
+      toPage: current.toPage,
+      rating: d,
+    })
+    setCards(prev => prev.map(c => c.id === current.id ? { ...c, ...schedule(current, d), reviewedAt: Date.now() } : c))
     const next = idx + 1
     if (mode === 'review') {
       if (next >= dueQueue.length) { setDone(true); return }

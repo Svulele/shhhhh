@@ -427,8 +427,8 @@ body::after {
   display: flex; align-items: center; justify-content: center;
   border: none; background: transparent; cursor: pointer;
   color: var(--text-3); flex-shrink: 0;
-  /* 44px min tap target */
-  min-width: 44px; min-height: 44px;
+  min-width: clamp(36px, calc((100vw - 40px) / 8), 44px);
+  min-height: 44px;
   transition: max-width 0.3s var(--spring),
               opacity   0.2s var(--ease-in-out),
               color     var(--dur-mid) var(--ease-in-out);
@@ -443,7 +443,9 @@ body::after {
   border: 1px solid var(--border-active);
 }
 .fnav-pill {
-  width: 40px; height: 40px; border-radius: 13px;
+  width: clamp(34px, calc((100vw - 56px) / 8), 40px);
+  height: clamp(34px, calc((100vw - 56px) / 8), 40px);
+  border-radius: 13px;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid transparent; flex-shrink: 0;
   transition: background  var(--dur-mid) var(--ease-in-out),

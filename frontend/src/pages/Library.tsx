@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Page } from '../App'
+import { addExamMark, EXAM_TAGS, type ExamMarkTag } from '../examMarks'
+import { addStudySeconds, recordReadingSession } from '../studyHistory'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Book {
@@ -125,8 +127,8 @@ function PdfPage({ bookId, buf, pageNum, scale = 1.4, onLoad }: {
 }
 
 // ── Ebook page — text extraction with image detection ─────────
-function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onImagePage }: {
-  bookId: string; buf: ArrayBuffer; pageNum: number; totalPages: number
+function EbookPage({ bookId, bookTitle, buf, pageNum, totalPages: _totalPages, onLoad, onImagePage }: {
+  bookId: string; bookTitle: string; buf: ArrayBuffer; pageNum: number; totalPages: number
   onLoad?: (n: number) => void; onImagePage?: () => void
 }) {
   const [items,    setItems]    = useState<{text:string;heading:boolean}[]>([])
@@ -135,7 +137,7 @@ function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onIm
 
   // Highlight → card state
   const [sel,      setSel]      = useState<{text:string;x:number;y:number}|null>(null)
-  const [saved,    setSaved]    = useState(false)
+  const [saved,    setSaved]    = useState<string|null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -225,8 +227,15 @@ function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onIm
       const ex = JSON.parse(localStorage.getItem('shh_flashcards')?? '[]')
       localStorage.setItem('shh_flashcards', JSON.stringify([...ex, card]))
     } catch {}
-    setSaved(true)
-    setTimeout(() => { setSel(null); setSaved(false); window.getSelection()?.removeAllRanges() }, 1200)
+    setSaved('Card saved')
+    setTimeout(() => { setSel(null); setSaved(null); window.getSelection()?.removeAllRanges() }, 1200)
+  }
+
+  const saveExam = (tag: ExamMarkTag) => {
+    if (!sel) return
+    addExamMark({ bookId, bookTitle, page: pageNum, text: sel.text, tag })
+    setSaved(`${EXAM_TAGS[tag].label} saved`)
+    setTimeout(() => { setSel(null); setSaved(null); window.getSelection()?.removeAllRanges() }, 1200)
   }
 
   const isTwoCol = typeof window !== 'undefined' && window.innerWidth >= 900
@@ -243,22 +252,28 @@ function EbookPage({ bookId, buf, pageNum, totalPages: _totalPages, onLoad, onIm
       {/* Selection popup */}
       {sel && (
         <div style={{
-          position:'fixed', left:Math.min(sel.x, window.innerWidth-180), top:sel.y,
+          position:'fixed', left:Math.min(Math.max(sel.x, 168), window.innerWidth-168), top:sel.y,
           transform:'translate(-50%,-100%)', zIndex:200,
-          background:'var(--bg-card)', border:'0.5px solid var(--border-active)', borderRadius:999,
-          padding:'7px 14px', display:'flex', alignItems:'center', gap:8,
+          background:'var(--bg-card)', border:'0.5px solid var(--border-active)', borderRadius:16,
+          padding:'8px', display:'flex', alignItems:'center', gap:6, flexWrap:'wrap',
+          maxWidth:'min(336px, calc(100vw - 24px))',
           boxShadow:'0 8px 24px rgba(0,0,0,.25)', backdropFilter:'blur(16px)',
           animation:'toastIn .2s ease both',
         }}>
           {saved ? (
-            <span style={{fontSize:12,color:'var(--green)',fontFamily:'var(--font-body)',fontWeight:500}}>✓ Card saved!</span>
+            <span style={{fontSize:12,color:'var(--green)',fontFamily:'var(--font-body)',fontWeight:500,padding:'2px 6px'}}>✓ {saved}</span>
           ) : (
             <>
-              <button onClick={saveCard} style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-body)',fontWeight:500,padding:0}}>
+              <button onClick={saveCard} style={{display:'flex',alignItems:'center',gap:5,fontSize:12,color:'var(--accent)',background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',borderRadius:999,cursor:'pointer',fontFamily:'var(--font-body)',fontWeight:500,padding:'6px 9px'}}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                Add flashcard
+                Card
               </button>
-              <button onClick={()=>setSel(null)} style={{fontSize:11,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',padding:0}}>✕</button>
+              {(Object.keys(EXAM_TAGS) as ExamMarkTag[]).map(tag => (
+                <button key={tag} onClick={() => saveExam(tag)} style={{fontSize:12,color:EXAM_TAGS[tag].color,background:EXAM_TAGS[tag].bg,border:`0.5px solid ${EXAM_TAGS[tag].border}`,borderRadius:999,cursor:'pointer',fontFamily:'var(--font-body)',fontWeight:500,padding:'6px 9px'}}>
+                  {EXAM_TAGS[tag].label}
+                </button>
+              ))}
+              <button onClick={()=>setSel(null)} style={{fontSize:11,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',padding:'4px 2px'}}>✕</button>
             </>
           )}
         </div>
@@ -612,6 +627,8 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
     setSessionStart(book.currentPage||1)
     setTotalPages(book.totalPages||1)
     ;(window as any).__shh_readStart = Date.now()
+    ;(window as any).__shh_readSessionId = `${book.id}:${book.currentPage || 1}:${Date.now()}`
+    ;(window as any).__shh_readSessionLogged = null
     setView('reader'); setShowNotes(false)
     // Store current reading context for Chat
     localStorage.setItem('shh_reading_ctx', JSON.stringify({
@@ -633,19 +650,31 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
 
   const closeReader = () => {
     const start = (window as any).__shh_readStart
+    let secs = 0
     if (start) {
-      const secs = Math.round((Date.now()-start)/1000)
-      if (secs > 10) {
-        const today = new Date().toISOString().split('T')[0]
-        try { const d=JSON.parse(localStorage.getItem('shh_study_time')??'{}'); d[today]=(d[today]??0)+secs; localStorage.setItem('shh_study_time',JSON.stringify(d)) } catch {}
-      }
+      secs = Math.round((Date.now()-start)/1000)
+      if (secs > 10) addStudySeconds(secs)
       delete (window as any).__shh_readStart
+    }
+    const sessionId = (window as any).__shh_readSessionId
+    if (activeBook && sessionId && (window as any).__shh_readSessionLogged !== sessionId) {
+      recordReadingSession(activeBook, sessionStart, currentPage, secs)
+      ;(window as any).__shh_readSessionLogged = sessionId
     }
     setView('shelf'); setShowNotes(false)
   }
 
   const finishSession = async () => {
     if (!activeBook) return
+    const start = (window as any).__shh_readStart
+    const secs = start ? Math.round((Date.now()-start)/1000) : 0
+    const sessionId = (window as any).__shh_readSessionId
+    if (sessionId && (window as any).__shh_readSessionLogged !== sessionId) {
+      if (secs > 10) addStudySeconds(secs)
+      recordReadingSession(activeBook, sessionStart, currentPage, secs)
+      ;(window as any).__shh_readSessionLogged = sessionId
+      delete (window as any).__shh_readStart
+    }
     setRecapLoading(true)
     const r = await generateRecap(activeBook,sessionStart,currentPage)
     setRecap(r); setRecapLoading(false); setView('recap')
@@ -779,7 +808,7 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
             {/* Content */}
             <div style={{flex:1,overflowY:'auto',overflowX:'hidden',minWidth:0,position:'relative'}}>
               {readerMode==='ebook'
-                ? <EbookPage bookId={activeBook.id} buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
+                ? <EbookPage bookId={activeBook.id} bookTitle={activeBook.title} buf={activeBuf} pageNum={currentPage} totalPages={totalPages}
                     onLoad={n=>{setTotalPages(n);setBooks(prev=>prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b))}}
                     onImagePage={()=>setReaderMode('pdf')}/>
                 : <div style={{display:'flex',justifyContent:'center',padding:'16px clamp(8px,2vw,20px)'}}>

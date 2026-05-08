@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme, useUser } from '../App'
 import type { Page } from '../App'
 import { getStreak, recordStudyDay } from '../supabase'
+import { generateWeeklySummaryText, summarizeStudyJourney } from '../studyHistory'
 
 // ── Confetti ──────────────────────────────────────────────────
 function fireConfetti() {
@@ -469,6 +470,77 @@ function StudyStats() {
   )
 }
 
+// ── Study journey summary ─────────────────────────────────────
+function StudyJourney() {
+  const [summary, setSummary] = useState(() => summarizeStudyJourney())
+  const [weeklyText, setWeeklyText] = useState(summary.weeklyText)
+
+  useEffect(() => {
+    const refresh = () => {
+      const next = summarizeStudyJourney()
+      setSummary(next)
+      setWeeklyText(next.weeklyText)
+      generateWeeklySummaryText(next).then(setWeeklyText)
+    }
+    refresh()
+    window.addEventListener('shh:study-history-updated', refresh)
+    window.addEventListener('storage', refresh)
+    return () => {
+      window.removeEventListener('shh:study-history-updated', refresh)
+      window.removeEventListener('storage', refresh)
+    }
+  }, [])
+
+  const s = summary.stats
+  const stat = [
+    { label: '7 days', value: `${s.weekPages}p`, sub: `${s.weekReviews} cards` },
+    { label: '30 days', value: fmtMins(s.monthFocus), sub: `${s.monthPages} pages` },
+    { label: 'Still to do', value: `${s.remainingPages}p`, sub: `${s.activeBooks} active` },
+  ]
+
+  return (
+    <div style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:'var(--r-xl)',padding:'18px 20px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:14}}>
+        <div>
+          <div style={{fontSize:9,letterSpacing:'2px',textTransform:'uppercase',color:'var(--text-3)',marginBottom:6}}>Study journey</div>
+          <div style={{fontFamily:'var(--font-display)',fontSize:21,letterSpacing:'-0.4px',color:'var(--text-1)',lineHeight:1.1}}>Weekly summary</div>
+        </div>
+        <div style={{fontSize:10,color:'var(--text-3)',padding:'4px 9px',borderRadius:999,background:'var(--bg-pill)',border:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>
+          {summary.weekLabel}
+        </div>
+      </div>
+
+      <p style={{fontSize:13,color:'var(--text-2)',lineHeight:1.65,fontWeight:300,marginBottom:16}}>
+        {weeklyText}
+      </p>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
+        {stat.map(x => (
+          <div key={x.label} style={{border:'0.5px solid var(--border)',borderRadius:12,padding:'10px 9px',background:'rgba(255,255,255,.02)'}}>
+            <div style={{fontSize:9,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--text-3)',marginBottom:4}}>{x.label}</div>
+            <div style={{fontFamily:'var(--font-display)',fontSize:19,color:'var(--accent)',lineHeight:1}}>{x.value}</div>
+            <div style={{fontSize:10,color:'var(--text-3)',marginTop:3}}>{x.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {summary.coverage.length > 0 && (
+        <div style={{borderTop:'0.5px solid var(--border)',paddingTop:12}}>
+          <div style={{fontSize:10,letterSpacing:'1.8px',textTransform:'uppercase',color:'var(--text-3)',marginBottom:8}}>Covered so far</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {summary.coverage.map(item => (
+              <div key={item} style={{fontSize:12,color:'var(--text-2)',fontWeight:300,lineHeight:1.45,display:'flex',gap:8}}>
+                <span style={{color:'var(--green)',fontWeight:500}}>✓</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Weather pill — auto-refreshes every 10 min ────────────────
 function WeatherPill({ lat, lon, locationName }: { lat:number; lon:number; locationName:string }) {
   const [temp, setTemp] = useState<number|null>(null)
@@ -667,6 +739,7 @@ export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
           <div className="home-col" style={{paddingTop:2}}>
             <PomodoroWidget/>
             <StudyStats/>
+            <StudyJourney/>
           </div>
 
         </div>

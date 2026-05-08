@@ -33,6 +33,7 @@ export const NAV: { page: Page; icon: React.ReactNode }[] = [
   { page: 'library',    icon: <svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h13"/><path d="M4 17h14a2 2 0 0 1 0 4H4"/></svg> },
   { page: 'chat',       icon: <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
   { page: 'flashcards', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/></svg> },
+  { page: 'notes',      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
   { page: 'pomodoro',   icon: <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg> },
   { page: 'settings',   icon: <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
 ]
@@ -40,7 +41,7 @@ export const NAV: { page: Page; icon: React.ReactNode }[] = [
 const NAV_LABELS: Record<string, string> = {
   dashboard: 'Home', library: 'Library', chat: 'Chat',
   flashcards: 'Cards', pomodoro: 'Focus', plan: 'Plan',
-  settings: 'Me',
+  notes: 'Notes', settings: 'Me',
 }
 
 function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {

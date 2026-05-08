@@ -1,6 +1,7 @@
 // timerStore.ts
 // Global timer singleton — survives page navigation because it lives outside React.
 // Components subscribe to get updates. The interval never stops when you navigate away.
+import { recordFocusSession } from './studyHistory'
 
 export type TimerMode = 'work' | 'break'
 export type AlarmType = 'bell' | 'chime' | 'beep'
@@ -46,6 +47,7 @@ function tick() {
   if (state.left <= 1) {
     clearInterval(interval!); interval = null
     const completedMode = state.mode
+    const completedSeconds = state.total
     const next: TimerMode = state.mode === 'work' ? 'break' : 'work'
     const nextLeft = (next === 'work' ? state.workMins : state.brkMins) * 60
     set({
@@ -55,6 +57,7 @@ function tick() {
       mode: next,
       sessions: state.mode === 'work' ? state.sessions + 1 : state.sessions,
     })
+    if (completedMode === 'work') recordFocusSession(completedSeconds)
     // Fire alarm
     onAlarm?.(completedMode, state.alarmType)
     return
