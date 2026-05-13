@@ -161,7 +161,6 @@ function FocusMode({ sound, onSound, onExit }: {
   const isWork = t.mode === 'work'
   const accent = isWork ? 'var(--accent)' : 'var(--green)'
   const glow   = isWork ? 'var(--accent-glow)' : 'var(--green-glow)'
-  const circ   = 2 * Math.PI * 130
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -172,83 +171,216 @@ function FocusMode({ sound, onSound, onExit }: {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
-  return (
-    <div style={{ position:'fixed',inset:0,zIndex:9000,background:'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',overflow:'hidden',animation:'fadeIn .3s ease both' }}>
-      <div style={{ position:'absolute',inset:0,background:`radial-gradient(ellipse 70% 55% at 50% 45%, ${isWork?'rgba(80,110,240,0.13)':'rgba(40,200,140,0.1)'} 0%,transparent 70%)`,pointerEvents:'none',transition:'background 1.5s ease' }}/>
+  const border = 'var(--border)'
 
-      {/* Top bar */}
-      <div style={{ position:'absolute',top:0,left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',zIndex:1 }}>
+  const pill = (active: boolean): React.CSSProperties => ({
+    padding: '5px 16px', borderRadius: 999, fontSize: 12,
+    cursor: 'pointer', fontFamily: 'var(--font-body)',
+    border: `0.5px solid ${active ? accent : border}`,
+    background: 'transparent',
+    color: active ? accent : 'var(--text-3)',
+    fontWeight: active ? 500 : 300,
+    transition: 'all .2s', touchAction: 'manipulation' as const,
+  })
+
+  const iconBtn = (active: boolean): React.CSSProperties => ({
+    width: 40, height: 40, borderRadius: 12,
+    border: `0.5px solid ${active ? accent : border}`,
+    background: 'transparent',
+    color: active ? accent : 'var(--text-3)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', transition: 'all .18s', touchAction: 'manipulation' as const,
+  })
+
+  const circleBtn = (): React.CSSProperties => ({
+    width: 46, height: 46, borderRadius: '50%',
+    border: `0.5px solid ${border}`,
+    background: 'transparent', color: 'var(--text-3)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', touchAction: 'manipulation' as const,
+  })
+
+  const SoundIcon = ({ type, active }: { type: string; active: boolean }) => {
+    const col = active ? accent : 'var(--text-3)'
+    const s = { fill: 'none' as const, stroke: col, strokeWidth: 1.7, strokeLinecap: 'round' as const }
+    if (type === 'rain') return (
+      <svg width="17" height="17" viewBox="0 0 24 24" {...s}>
+        <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/>
+        <line x1="8" y1="19" x2="8" y2="21"/><line x1="16" y1="19" x2="16" y2="21"/><line x1="12" y1="21" x2="12" y2="23"/>
+      </svg>
+    )
+    if (type === 'forest') return (
+      <svg width="17" height="17" viewBox="0 0 24 24" {...s} strokeLinejoin="round">
+        <path d="M12 2L8 9h2l-3 6h4v4h2v-4h4l-3-6h2z"/>
+      </svg>
+    )
+    if (type === 'cafe') return (
+      <svg width="17" height="17" viewBox="0 0 24 24" {...s}>
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+        <line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>
+      </svg>
+    )
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" {...s}>
+        <path d="M9 18V5l12-2v13"/>
+        <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
+    )
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9000,
+      background: 'var(--bg)',
+      overflow: 'hidden',
+      animation: 'fadeIn .3s ease both',
+      display: 'grid',
+      // topbar | timer zone | controls — controls get fixed height, timer fills middle
+      gridTemplateRows: 'auto 1fr auto',
+      // Respect the floating nav bar height at bottom (~90px)
+      paddingBottom: 'calc(var(--nav-bottom, 36px) + 70px)',
+    }}>
+      {/* Glow */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `radial-gradient(ellipse 70% 50% at 50% 42%, ${
+          isWork ? 'rgba(80,110,240,0.07)' : 'rgba(40,200,140,0.06)'
+        } 0%, transparent 65%)`,
+        transition: 'background 1.5s ease',
+      }}/>
+
+      {/* ── ROW 1: TOP BAR ── */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        padding: '24px 28px 0',
+      }}>
         <div>
-          <div style={{ fontFamily:'var(--font-display)',fontSize:30,letterSpacing:'-1px',color:'var(--text-1)',lineHeight:1 }}>{t.sessions}</div>
-          <div style={{ fontSize:9,color:'var(--text-3)',letterSpacing:'2px',textTransform:'uppercase',marginTop:2 }}>sessions</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 300, letterSpacing: '-2px', color: 'var(--text-2)', lineHeight: 1 }}>{t.sessions}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>Sessions</div>
         </div>
-        <div style={{ display:'flex',gap:4,background:'var(--bg-card)',borderRadius:999,padding:4,border:'0.5px solid var(--border)' }}>
-          {(['work','break'] as TimerMode[]).map(m=>(
-            <button key={m} onClick={()=>timerStore.switchMode(m)} style={{ padding:'5px 16px',borderRadius:999,fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',border:'none',background:t.mode===m?accent:'transparent',color:t.mode===m?'white':'var(--text-3)',fontWeight:t.mode===m?500:300,transition:'all .2s',touchAction:'manipulation' }}>
-              {m==='work'?'Focus':'Break'}
+
+        <div style={{ display: 'flex', borderRadius: 999, padding: 4, border: `0.5px solid ${border}`, background: 'transparent', gap: 2, marginTop: 2 }}>
+          {(['work', 'break'] as TimerMode[]).map(m => (
+            <button key={m} onClick={() => timerStore.switchMode(m)} style={pill(t.mode === m)}>
+              {m === 'work' ? 'Focus' : 'Break'}
             </button>
           ))}
         </div>
-        <button onClick={onExit} style={{ width:40,height:40,borderRadius:'50%',border:'0.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-3)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation' }}>
-          <CloseIcon/>
-        </button>
-      </div>
 
-      {/* Giant ring */}
-      <div style={{ position:'relative',zIndex:1,marginBottom:44 }}>
-        {t.running && <>
-          <div style={{ position:'absolute',inset:-18,borderRadius:'50%',border:`1px solid ${isWork?'rgba(99,140,245,0.18)':'rgba(62,207,160,0.18)'}`,animation:'pulse 2.5s ease-in-out infinite' }}/>
-          <div style={{ position:'absolute',inset:-36,borderRadius:'50%',border:`0.5px solid ${isWork?'rgba(99,140,245,0.08)':'rgba(62,207,160,0.08)'}`,animation:'pulse 2.5s ease-in-out infinite',animationDelay:'.8s' }}/>
-        </>}
-        <svg width="300" height="300" viewBox="0 0 300 300" style={{ transform:'rotate(-90deg)' }}>
-          <circle cx="150" cy="150" r="130" fill="none" stroke="var(--text-4)" strokeWidth="4"/>
-          <circle cx="150" cy="150" r="130" fill="none" stroke={accent} strokeWidth="4" strokeLinecap="round"
-            strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)}
-            style={{ transition:t.running?'stroke-dashoffset 1s linear':'none',filter:`drop-shadow(0 0 14px ${glow})` }}
-          />
-        </svg>
-        <div style={{ position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6 }}>
-          <div style={{ fontFamily:'var(--font-display)',fontSize:'clamp(64px,14vw,88px)',letterSpacing:'-5px',color:'var(--text-1)',lineHeight:1,userSelect:'none' }}>
-            {mm}<span style={{ opacity:0.2,letterSpacing:'-2px' }}>:</span>{ss}
-          </div>
-          <div style={{ fontSize:10,letterSpacing:'3px',textTransform:'uppercase',color:isWork?'var(--accent)':'var(--green)',fontWeight:500 }}>
-            {isWork?'focus':'break'}
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div style={{ display:'flex',alignItems:'center',gap:24,marginBottom:40,zIndex:1 }}>
-        <button onClick={timerStore.reset} style={{ width:52,height:52,borderRadius:'50%',border:'0.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-2)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation' }}><ResetIcon/></button>
-        <button onClick={timerStore.toggle} style={{ width:78,height:78,borderRadius:'50%',border:'none',background:`linear-gradient(135deg,${accent},${isWork?'#7b6cf6':'#34d399'})`,color:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 8px 32px ${glow}`,touchAction:'manipulation' }}>
-          {t.running?<PauseIcon/>:<PlayIcon/>}
-        </button>
-        <button onClick={()=>onSound(sound?null:'rain')} style={{ width:52,height:52,borderRadius:'50%',border:`0.5px solid ${sound?'var(--border-active)':'var(--border)'}`,background:sound?'var(--accent-soft)':'var(--bg-card)',color:sound?'var(--accent)':'var(--text-2)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation' }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            {sound ? <><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></> : <><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>}
+        <button onClick={onExit} style={circleBtn()}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       </div>
 
-      {/* Ambient + alarm shelf */}
-      <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:10,zIndex:1 }}>
-        <div style={{ display:'flex',gap:8 }}>
-          {[{k:'rain',l:'🌧'},{k:'forest',l:'🌿'},{k:'cafe',l:'☕'},{k:'white',l:'〰'}].map(({k,l})=>(
-            <button key={k} onClick={()=>onSound(sound===k?null:k)} style={{ width:38,height:38,borderRadius:11,border:`0.5px solid ${sound===k?'var(--border-active)':'var(--border)'}`,background:sound===k?'var(--accent-soft)':'var(--bg-card)',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',touchAction:'manipulation' }}>{l}</button>
-          ))}
+      {/* ── ROW 2: TIMER — fills entire middle zone, centered inside it ── */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex',
+        alignItems: 'center',     // vertically centered in the zone
+        justifyContent: 'center',
+      }}>
+        {t.running && <>
+          <div style={{ position: 'absolute', width: '75vmin', height: '75vmin', borderRadius: '50%', border: `1px solid ${isWork ? 'rgba(99,140,245,0.05)' : 'rgba(62,207,160,0.05)'}`, animation: 'pulse 3s ease-in-out infinite' }}/>
+          <div style={{ position: 'absolute', width: '58vmin', height: '58vmin', borderRadius: '50%', border: `0.5px solid ${isWork ? 'rgba(99,140,245,0.03)' : 'rgba(62,207,160,0.03)'}`, animation: 'pulse 3s ease-in-out infinite', animationDelay: '.9s' }}/>
+        </>}
+
+        {/* Timer — font size scales to fill the available zone */}
+        <div style={{ display: 'flex', alignItems: 'center', userSelect: 'none' }}>
+          <span style={{
+            fontFamily: "'Playfair Display', 'Instrument Serif', Georgia, serif",
+            // Bigger clamp — fills the red rectangle
+            fontSize: 'clamp(100px, 20vw, 240px)',
+            fontWeight: 900, letterSpacing: '-6px',
+            color: 'var(--text-1)', lineHeight: 0.9,
+          }}>{mm}</span>
+
+          {/* Double dot colon */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 'clamp(8px, 1.5vw, 18px)',
+            flexShrink: 0,
+            width: 'clamp(24px, 3.5vw, 52px)',
+            marginTop: 'clamp(10px, 1.8vw, 24px)',
+          }}>
+            <div style={{ width: 'clamp(10px, 1.3vw, 16px)', height: 'clamp(10px, 1.3vw, 16px)', borderRadius: '50%', background: 'var(--text-1)' }}/>
+            <div style={{ width: 'clamp(10px, 1.3vw, 16px)', height: 'clamp(10px, 1.3vw, 16px)', borderRadius: '50%', background: 'var(--text-1)' }}/>
+          </div>
+
+          <span style={{
+            fontFamily: "'Playfair Display', 'Instrument Serif', Georgia, serif",
+            fontSize: 'clamp(100px, 20vw, 240px)',
+            fontWeight: 900, letterSpacing: '-6px',
+            color: 'var(--text-1)', lineHeight: 0.9,
+          }}>{ss}</span>
         </div>
-        <div style={{ display:'flex',gap:5,alignItems:'center' }}>
-          <span style={{ fontSize:9,color:'var(--text-3)',letterSpacing:'1.5px',textTransform:'uppercase',marginRight:4 }}>alarm</span>
-          {(['bell','chime','beep'] as const).map(a=>(
-            <button key={a} onClick={()=>timerStore.setAlarmType(a)} style={{ padding:'4px 11px',borderRadius:999,fontSize:11,cursor:'pointer',fontFamily:'var(--font-body)',border:`0.5px solid ${t.alarmType===a?'var(--border-active)':'var(--border)'}`,background:t.alarmType===a?'var(--accent-soft)':'transparent',color:t.alarmType===a?'var(--accent)':'var(--text-3)',touchAction:'manipulation' }}>{a}</button>
-          ))}
+      </div>
+
+      {/* ── ROW 3: CONTROLS — above nav bar, not overlapping it ── */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex', flexDirection: 'column',
+        gap: 14,
+        padding: '0 32px 20px',   // bottom padding keeps it off the nav bar
+      }}>
+        {/* Play · Reset LEFT — Sounds CENTER — Spacer RIGHT */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <button onClick={timerStore.toggle} style={{ background: 'none', border: 'none', cursor: 'pointer', color: accent, display: 'flex', padding: 0, touchAction: 'manipulation', filter: `drop-shadow(0 0 8px ${glow})` }}>
+              {t.running
+                ? <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="4" height="18" rx="1.5"/><rect x="15" y="3" width="4" height="18" rx="1.5"/></svg>
+                : <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              }
+            </button>
+            <button onClick={timerStore.reset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex', padding: 0, touchAction: 'manipulation' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+              </svg>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            {(['rain', 'forest', 'cafe', 'white'] as const).map(k => (
+              <button key={k} onClick={() => onSound(sound === k ? null : k)} style={iconBtn(sound === k)}>
+                <SoundIcon type={k} active={sound === k}/>
+              </button>
+            ))}
+            <button onClick={() => onSound(sound ? null : 'rain')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: sound ? 'var(--text-3)' : 'var(--text-4)', display: 'flex', marginLeft: 4, padding: 0, touchAction: 'manipulation' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                {sound
+                  ? <><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>
+                  : <><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>
+                }
+              </svg>
+            </button>
+          </div>
+
+          <div style={{ width: 68 }}/>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 2, background: 'var(--text-4)', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: accent, borderRadius: 99, transition: t.running ? 'width 1s linear' : 'none', boxShadow: `0 0 6px ${glow}` }}/>
+        </div>
+
+        {/* Alarm */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <span style={{ fontSize: 10, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--text-3)', fontFamily: 'var(--font-body)' }}>Alarm</span>
+          <div style={{ display: 'flex', gap: 7 }}>
+            {(['bell', 'chime', 'beep'] as const).map(a => (
+              <button key={a} onClick={() => timerStore.setAlarmType(a)} style={pill(t.alarmType === a)}>{a}</button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   )
 }
-
 // ── Main Pomodoro page ────────────────────────────────────────
 export default function Pomodoro() {
   const t = useTimerState()
@@ -314,7 +446,7 @@ export default function Pomodoro() {
           {/* Header */}
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24 }}>
             <div>
-              <div style={{ fontFamily:'var(--font-display)',fontSize:30,letterSpacing:'-0.8px',color:'var(--text-1)',marginBottom:3 }}>Focus</div>
+              <div style={{ fontFamily: "'Playfair Display', Georgia, serif",fontWeight:700,fontSize:30,letterSpacing:'-0.8px',color:'var(--text-1)',marginBottom:3 }}>Focus</div>
               <div style={{ fontSize:12,color:'var(--text-3)' }}>{t.sessions} session{t.sessions!==1?'s':''} today</div>
             </div>
             <button onClick={()=>setFullscreen(true)} style={{ display:'flex',alignItems:'center',gap:7,padding:'8px 16px',borderRadius:999,border:'0.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',transition:'all .2s',touchAction:'manipulation' }}>

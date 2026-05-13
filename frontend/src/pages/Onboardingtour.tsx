@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Page } from '../App'
+import { supabase } from '../supabase'
 
-const TOUR_KEY = 'shh_tour_done'
+const TOUR_KEY = 'shh_tour_done' // local fallback
 
 interface TourStep {
-  page: Page | null        // navigate here when step advances (null = stay on home)
-  anchor: string | null    // data-tour attribute to spotlight
+  page: Page | null
+  anchor: string | null
   emoji: string
   title: string
   body: string
@@ -57,7 +58,6 @@ const STEPS: TourStep[] = [
   },
 ]
 
-// ── Get position of a data-tour element ───────────────────────
 function getSpotlight(anchor: string | null) {
   if (!anchor) return null
   const el = document.querySelector(`[data-tour="${anchor}"]`)
@@ -66,33 +66,95 @@ function getSpotlight(anchor: string | null) {
   return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
-// ── Main ──────────────────────────────────────────────────────
-export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page) => void; onDone?: () => void }) {
-  const [step,       setStep]       = useState(0)
-  const [visible,    setVisible]    = useState(false)
-  const [exiting,    setExiting]    = useState(false)
-  const [spotlight,  setSpotlight]  = useState<{ top:number; left:number; width:number; height:number } | null>(null)
+// ── Mark tour done in Supabase + localStorage ─────────────────
+async function markTourDone(userId?: string) {
+  // Always save locally first (works offline / no-auth)
+  localStorage.setItem(TOUR_KEY, '1')
+
+  // Save to Supabase so it persists across devices
+  if (userId && supabase) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ tour_done: true })
+        .eq('id', userId)
+    } catch (e) {
+      console.warn('Could not save tour_done to Supabase:', e)
+    }
+  }
+}
+
+// ── Check if tour already done (local OR cloud) ───────────────
+async function isTourDone(userId?: string): Promise<boolean> {
+  // Local check first — fast
+  if (localStorage.getItem(TOUR_KEY)) return true
+
+  // Cloud check — catches new devices
+  if (userId && supabase) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('tour_done')
+        .eq('id', userId)
+        .single()
+      if (data?.tour_done) {
+        // Sync to local so future checks are instant
+        localStorage.setItem(TOUR_KEY, '1')
+        return true
+      }
+    } catch {
+      // If Supabase fails, fall through and show tour
+    }
+  }
+
+  return false
+}
+
+export default function OnboardingTour({
+  setPage,
+  userId,
+  onDone,
+}: {
+  setPage: (p: Page) => void
+  userId?: string       // pass the logged-in user's id from AuthGate
+  onDone?: () => void
+}) {
+  const [step,      setStep]      = useState(0)
+  const [visible,   setVisible]   = useState(false)
+  const [exiting,   setExiting]   = useState(false)
+  const [spotlight, setSpotlight] = useState<{ top:number; left:number; width:number; height:number } | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (localStorage.getItem(TOUR_KEY)) return
-    const t = setTimeout(() => setVisible(true), 900)
-    return () => clearTimeout(t)
-  }, [])
+    // Check both local + Supabase before showing
+    isTourDone(userId).then(done => {
+      if (done) return
+      const t = setTimeout(() => setVisible(true), 900)
+      return () => clearTimeout(t)
+    })
+  }, [userId])
 
-  // Update spotlight whenever step changes — poll briefly for DOM readiness
+  // Poll for spotlight element after step/page change
   useEffect(() => {
     if (!visible) return
+    if (pollRef.current) clearInterval(pollRef.current)
+
     const current = STEPS[step]
+    if (!current.anchor) { setSpotlight(null); return }
+
     let attempts = 0
-    const poll = setInterval(() => {
+    pollRef.current = setInterval(() => {
       const s = getSpotlight(current.anchor)
-      if (s) { setSpotlight(s); clearInterval(poll) }
-      if (++attempts > 30) { setSpotlight(null); clearInterval(poll) }
+      if (s) { setSpotlight(s); clearInterval(pollRef.current!) }
+      if (++attempts > 40) { setSpotlight(null); clearInterval(pollRef.current!) }
     }, 100)
-    // Also update on resize
+
     const onResize = () => setSpotlight(getSpotlight(current.anchor))
     window.addEventListener('resize', onResize)
-    return () => { clearInterval(poll); window.removeEventListener('resize', onResize) }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      window.removeEventListener('resize', onResize)
+    }
   }, [step, visible])
 
   if (!visible) return null
@@ -100,6 +162,15 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
   const current = STEPS[step]
   const isLast  = step === STEPS.length - 1
   const PAD     = 12
+
+  const dismiss = () => {
+    setExiting(true)
+    setTimeout(async () => {
+      setVisible(false)
+      await markTourDone(userId)
+      onDone?.()
+    }, 220)
+  }
 
   const advance = () => {
     if (isLast) { dismiss(); return }
@@ -109,16 +180,7 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
       if (next.page) setPage(next.page)
       setStep(s => s + 1)
       setExiting(false)
-      setSpotlight(null) // clear old spotlight while new page loads
-    }, 220)
-  }
-
-  const dismiss = () => {
-    setExiting(true)
-    setTimeout(() => {
-      setVisible(false)
-      localStorage.setItem(TOUR_KEY, '1')
-      onDone?.()
+      setSpotlight(null)
     }, 220)
   }
 
@@ -126,7 +188,6 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
   const W = window.innerWidth
   const H = window.innerHeight
 
-  // Card position: centre on step 0, otherwise above/below spotlight
   let cardStyle: React.CSSProperties = {
     position: 'fixed',
     zIndex: 9993,
@@ -137,22 +198,18 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
     padding: '22px 22px 18px',
     boxShadow: '0 24px 64px rgba(0,0,0,.45), 0 0 0 0.5px rgba(255,255,255,.06)',
     backdropFilter: 'blur(32px)',
-    animation: exiting
-      ? 'tourOut .2s var(--ease-in-out) both'
-      : 'tourIn .32s var(--ease-out) both',
+    animation: exiting ? 'tourOut .2s ease both' : 'tourIn .32s ease both',
   }
 
   if (!spotlight || !current.anchor) {
-    // Centre of screen
     cardStyle = { ...cardStyle, top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }
   } else {
-    const spCx   = spotlight.left + spotlight.width / 2
-    const cardW  = Math.min(390, W * 0.9)
-    const cardL  = Math.max(16, Math.min(spCx - cardW / 2, W - cardW - 16))
-    const spBot  = spotlight.top + spotlight.height + PAD
-    const spTop  = spotlight.top - PAD
+    const spCx  = spotlight.left + spotlight.width / 2
+    const cardW = Math.min(390, W * 0.9)
+    const cardL = Math.max(16, Math.min(spCx - cardW / 2, W - cardW - 16))
+    const spBot = spotlight.top + spotlight.height + PAD
+    const spTop = spotlight.top - PAD
 
-    // Try to place below; if not enough room place above
     if (spBot + 180 < H) {
       cardStyle = { ...cardStyle, top: spBot + 10, left: cardL }
     } else {
@@ -162,7 +219,6 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
 
   return (
     <>
-      {/* ── SVG overlay with spotlight cutout ── */}
       <svg
         style={{ position:'fixed', inset:0, width:'100%', height:'100%', zIndex:9991, pointerEvents:'none' }}
         xmlns="http://www.w3.org/2000/svg"
@@ -172,53 +228,32 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
             <rect width="100%" height="100%" fill="white"/>
             {spotlight && (
               <rect
-                x={spotlight.left - PAD}
-                y={spotlight.top  - PAD}
-                width={spotlight.width  + PAD * 2}
-                height={spotlight.height + PAD * 2}
-                rx={14}
-                fill="black"
+                x={spotlight.left - PAD} y={spotlight.top - PAD}
+                width={spotlight.width + PAD * 2} height={spotlight.height + PAD * 2}
+                rx={14} fill="black"
               />
             )}
           </mask>
         </defs>
-
-        {/* Dimmed overlay */}
-        <rect
-          width="100%" height="100%"
-          fill="rgba(0,0,0,0.68)"
-          mask="url(#shh-spotlight-mask)"
-          style={{ transition: 'opacity .3s ease' }}
-        />
-
-        {/* Spotlight accent border + glow */}
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.68)" mask="url(#shh-spotlight-mask)" style={{ transition:'opacity .3s ease' }}/>
         {spotlight && (
           <rect
-            x={spotlight.left - PAD}
-            y={spotlight.top  - PAD}
-            width={spotlight.width  + PAD * 2}
-            height={spotlight.height + PAD * 2}
-            rx={14}
-            fill="none"
-            stroke="rgba(99,140,245,0.7)"
-            strokeWidth="1.5"
+            x={spotlight.left - PAD} y={spotlight.top - PAD}
+            width={spotlight.width + PAD * 2} height={spotlight.height + PAD * 2}
+            rx={14} fill="none"
+            stroke="rgba(99,140,245,0.7)" strokeWidth="1.5"
             style={{ filter:'drop-shadow(0 0 10px rgba(99,140,245,0.5))' }}
           />
         )}
       </svg>
 
-      {/* Click backdrop to skip */}
       <div onClick={dismiss} style={{ position:'fixed', inset:0, zIndex:9992, cursor:'pointer' }}/>
 
-      {/* ── Tour card ── */}
       <div style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()}>
-
-        {/* Progress bar */}
         <div style={{ height:2, background:'var(--text-4)', borderRadius:99, overflow:'hidden', marginBottom:18 }}>
-          <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg,var(--accent),#b07ef7)', width:`${progress}%`, transition:'width .35s var(--ease-out)' }}/>
+          <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg,var(--accent),#b07ef7)', width:`${progress}%`, transition:'width .35s ease' }}/>
         </div>
 
-        {/* Content */}
         <div style={{ display:'flex', alignItems:'flex-start', gap:13, marginBottom:18 }}>
           <div style={{ width:42, height:42, borderRadius:12, flexShrink:0, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21 }}>
             {current.emoji}
@@ -233,20 +268,17 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
           </div>
         </div>
 
-        {/* Dot indicators + buttons */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          {/* Step dots */}
           <div style={{ display:'flex', gap:5 }}>
             {STEPS.map((_, i) => (
               <div key={i} style={{
                 height:5, borderRadius:99,
                 background: i === step ? 'var(--accent)' : 'var(--text-4)',
                 width: i === step ? 18 : 5,
-                transition:'width .3s var(--spring), background .3s ease',
+                transition:'width .3s ease, background .3s ease',
               }}/>
             ))}
           </div>
-
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             <button onClick={dismiss} style={{ padding:'7px 13px', borderRadius:999, fontSize:12, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
               Skip
@@ -259,8 +291,8 @@ export default function OnboardingTour({ setPage, onDone }: { setPage: (p: Page)
       </div>
 
       <style>{`
-        @keyframes tourIn  { from { opacity:0; transform:translateY(14px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
-        @keyframes tourOut { from { opacity:1; transform:translateY(0) scale(1); }       to { opacity:0; transform:translateY(8px) scale(0.97); } }
+        @keyframes tourIn  { from { opacity:0; transform:translateY(14px) scale(0.95); } to { opacity:1; transform:none; } }
+        @keyframes tourOut { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(8px) scale(0.97); } }
       `}</style>
     </>
   )
