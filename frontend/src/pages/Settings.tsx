@@ -100,6 +100,11 @@ export default function Settings({ doSignOut }: { doSignOut?: () => void }) {
     window.location.reload()
   }
 
+  const restartTour = () => {
+    localStorage.removeItem('shh_tour_done')
+    window.dispatchEvent(new CustomEvent('shh:restart-tour'))
+  }
+
   const inp: CSSProperties = {
     width:'100%', background:'var(--bg-input)', border:'1px solid var(--border)',
     borderRadius:10, padding:'10px 14px', color:'var(--text-1)',
@@ -255,7 +260,10 @@ export default function Settings({ doSignOut }: { doSignOut?: () => void }) {
                 All data — books, notes, chats, settings — lives on <strong style={{ fontWeight:500, color:'var(--text-1)' }}>your device only</strong>.
                 {user && <> Your profile syncs to your account so it works across devices.</>}
               </div>
-              <div style={{ display:'flex', gap:8 }}>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <button onClick={restartTour} style={{ padding:'9px 18px', borderRadius:10, border:'0.5px solid var(--border-active)', background:'var(--accent-soft)', color:'var(--accent)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s' }}>
+                  Restart app tour
+                </button>
                 <button onClick={clearAll} style={{ padding:'9px 18px', borderRadius:10, border:'0.5px solid rgba(239,68,68,.25)', background:'rgba(239,68,68,.07)', color:'#f87171', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s' }}>
                   Clear all local data
                 </button>

@@ -7,54 +7,68 @@ const TOUR_KEY = 'shh_tour_done' // local fallback
 interface TourStep {
   page: Page | null
   anchor: string | null
-  emoji: string
+  icon: string
+  kicker: string
   title: string
   body: string
+  bullets?: string[]
   cta: string
 }
 
 const STEPS: TourStep[] = [
   {
     page: null, anchor: null,
-    emoji: '👋',
-    title: "Welcome to Shhhhh",
-    body: "Your personal AI study buddy. It reads with you, quizzes you, and actually remembers you across sessions. Take a 30-second tour.",
-    cta: "Show me around →",
+    icon: 'S',
+    kicker: 'First time here',
+    title: 'Welcome to Shhhhh',
+    body: 'This is your study room: books, focus sessions, AI help, notes, flashcards, and daily planning in one place.',
+    bullets: ['Start by adding one PDF', 'Read a few pages', 'Let the app turn that work into review'],
+    cta: 'Set up my space',
   },
   {
     page: 'library', anchor: 'library',
-    emoji: '📚',
-    title: "Your Library",
-    body: "Upload any PDF — textbooks, notes, articles. Read it in clean ebook mode or original PDF. The AI always knows which page you're on.",
-    cta: "Got it",
+    icon: '1',
+    kicker: 'Step one',
+    title: 'Add your first book',
+    body: 'The Library is where textbooks, notes, articles, and slides live. Drop in a PDF and Shhhhh remembers your place automatically.',
+    bullets: ['PDFs stay in your browser storage', 'Progress is saved page by page', 'Books in progress appear on your dashboard'],
+    cta: 'Next',
+  },
+  {
+    page: 'library', anchor: null,
+    icon: '2',
+    kicker: 'While reading',
+    title: 'Use reader mode',
+    body: 'Open a book to enter reader mode. You can switch between original PDF view and a cleaner reading view, then mark the session done when you finish.',
+    bullets: ['Use the arrows or keyboard to move pages', 'Open notes without leaving the book', 'The app uses your current page as study context'],
+    cta: 'Show me AI help',
   },
   {
     page: 'chat', anchor: 'chat',
-    emoji: '🤖',
-    title: "Ask the AI",
-    body: "Ask anything about what you're studying. No need to explain — it already knows your book and page. It also remembers things about you over time.",
-    cta: "Nice",
+    icon: '3',
+    kicker: 'Ask anything',
+    title: 'Chat with your study context',
+    body: 'Use Chat when you want an explanation, example question, summary, or study strategy. If you came from a book, the app carries that reading context with you.',
+    bullets: ['Ask for simpler explanations', 'Turn confusing sections into examples', 'Jump from a recap question straight into chat'],
+    cta: 'Next',
   },
   {
     page: 'flashcards', anchor: 'flashcards',
-    emoji: '🃏',
-    title: "Auto Flashcards",
-    body: "Cards are automatically created from every reading session. Rate them Hard, Okay, or Easy — the app decides when to show them again.",
-    cta: "Smart",
-  },
-  {
-    page: 'pomodoro', anchor: 'pomodoro',
-    emoji: '⏱',
-    title: "Focus Timer",
-    body: "Pomodoro sessions with ambient sounds — rain, forest, café, white noise. All in-browser. A bell plays when time is up.",
-    cta: "Let's go",
+    icon: '4',
+    kicker: 'Remember it',
+    title: 'Review with flashcards',
+    body: 'Flashcards help you come back to what matters. Rate cards as Hard, Okay, or Easy and Shhhhh spaces them out for future review.',
+    bullets: ['Hard cards return sooner', 'Easy cards disappear for longer', 'Review mode keeps the session focused'],
+    cta: 'Keep going',
   },
   {
     page: 'plan', anchor: 'plan',
-    emoji: '📅',
-    title: "Daily Plan",
-    body: "Every morning the AI builds a personalised study plan from your books, cards due, and study time this week. Tap any task to jump to it.",
-    cta: "Start studying →",
+    icon: '5',
+    kicker: 'Stay consistent',
+    title: 'Follow the daily plan',
+    body: 'The Plan page pulls together reading, flashcards, focus time, and weak areas so you always know what to do next.',
+    bullets: ['Tap a task to jump into it', 'Use Pomodoro when you need a focused block', 'Your dashboard shows the bigger picture'],
+    cta: 'Finish tour',
   },
 ]
 
@@ -113,10 +127,12 @@ async function isTourDone(userId?: string): Promise<boolean> {
 export default function OnboardingTour({
   setPage,
   userId,
+  forceShow = false,
   onDone,
 }: {
   setPage: (p: Page) => void
   userId?: string       // pass the logged-in user's id from AuthGate
+  forceShow?: boolean
   onDone?: () => void
 }) {
   const [step,      setStep]      = useState(0)
@@ -126,13 +142,28 @@ export default function OnboardingTour({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    if (forceShow) {
+      const t = setTimeout(() => setVisible(true), 120)
+      return () => clearTimeout(t)
+    }
+
     // Check both local + Supabase before showing
     isTourDone(userId).then(done => {
       if (done) return
       const t = setTimeout(() => setVisible(true), 900)
       return () => clearTimeout(t)
     })
-  }, [userId])
+  }, [userId, forceShow])
+
+  useEffect(() => {
+    if (!visible) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss()
+      if (e.key === 'Enter') advance()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [visible, step])
 
   // Poll for spotlight element after step/page change
   useEffect(() => {
@@ -184,6 +215,18 @@ export default function OnboardingTour({
     }, 220)
   }
 
+  const goBack = () => {
+    if (step === 0) return
+    setExiting(true)
+    setTimeout(() => {
+      const prev = STEPS[step - 1]
+      if (prev.page) setPage(prev.page)
+      setStep(s => s - 1)
+      setExiting(false)
+      setSpotlight(null)
+    }, 220)
+  }
+
   const progress = ((step + 1) / STEPS.length) * 100
   const W = window.innerWidth
   const H = window.innerHeight
@@ -194,11 +237,11 @@ export default function OnboardingTour({
     width: 'clamp(300px,90vw,390px)',
     background: 'var(--bg-card)',
     border: '0.5px solid var(--border)',
-    borderRadius: 24,
-    padding: '22px 22px 18px',
+    borderRadius: 22,
+    padding: '20px 20px 18px',
     boxShadow: '0 24px 64px rgba(0,0,0,.45), 0 0 0 0.5px rgba(255,255,255,.06)',
     backdropFilter: 'blur(32px)',
-    animation: exiting ? 'tourOut .2s ease both' : 'tourIn .32s ease both',
+    animation: exiting ? 'tourOut .2s ease both' : 'tourIn .28s ease both',
   }
 
   if (!spotlight || !current.anchor) {
@@ -210,7 +253,7 @@ export default function OnboardingTour({
     const spBot = spotlight.top + spotlight.height + PAD
     const spTop = spotlight.top - PAD
 
-    if (spBot + 180 < H) {
+    if (spBot + 280 < H) {
       cardStyle = { ...cardStyle, top: spBot + 10, left: cardL }
     } else {
       cardStyle = { ...cardStyle, bottom: H - spTop + 10, left: cardL }
@@ -249,27 +292,41 @@ export default function OnboardingTour({
 
       <div onClick={dismiss} style={{ position:'fixed', inset:0, zIndex:9992, cursor:'pointer' }}/>
 
-      <div style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="App tour">
         <div style={{ height:2, background:'var(--text-4)', borderRadius:99, overflow:'hidden', marginBottom:18 }}>
           <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg,var(--accent),#b07ef7)', width:`${progress}%`, transition:'width .35s ease' }}/>
         </div>
 
-        <div style={{ display:'flex', alignItems:'flex-start', gap:13, marginBottom:18 }}>
-          <div style={{ width:42, height:42, borderRadius:12, flexShrink:0, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21 }}>
-            {current.emoji}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:16 }}>
+          <div style={{ width:42, height:42, borderRadius:12, flexShrink:0, background:'linear-gradient(135deg,var(--accent),#7b6cf6)', border:'0.5px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:17, fontWeight:600, fontFamily:'var(--font-display)', boxShadow:'0 8px 24px var(--accent-glow)' }}>
+            {current.icon}
           </div>
-          <div>
-            <div style={{ fontSize:15, fontWeight:500, color:'var(--text-1)', marginBottom:5, letterSpacing:'-0.2px' }}>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'1.6px', color:'var(--accent)', fontWeight:600, marginBottom:6 }}>
+              {current.kicker}
+            </div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:500, color:'var(--text-1)', marginBottom:7, letterSpacing:'-0.4px', lineHeight:1.15 }}>
               {current.title}
             </div>
-            <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:300, lineHeight:1.65 }}>
+            <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:300, lineHeight:1.6 }}>
               {current.body}
             </div>
           </div>
         </div>
 
+        {current.bullets && (
+          <div style={{ display:'grid', gap:7, margin:'0 0 18px 56px' }}>
+            {current.bullets.map(item => (
+              <div key={item} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:12, color:'var(--text-2)', lineHeight:1.45 }}>
+                <span style={{ width:5, height:5, borderRadius:'50%', background:'var(--accent)', marginTop:6, flexShrink:0, boxShadow:'0 0 10px var(--accent-glow)' }}/>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', gap:5 }}>
+          <div style={{ display:'flex', gap:5 }} aria-label={`Step ${step + 1} of ${STEPS.length}`}>
             {STEPS.map((_, i) => (
               <div key={i} style={{
                 height:5, borderRadius:99,
@@ -280,10 +337,15 @@ export default function OnboardingTour({
             ))}
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <button onClick={dismiss} style={{ padding:'7px 13px', borderRadius:999, fontSize:12, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
+            {step > 0 && (
+              <button onClick={goBack} style={{ padding:'7px 10px', borderRadius:999, fontSize:12, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
+                Back
+              </button>
+            )}
+            <button onClick={dismiss} style={{ padding:'7px 10px', borderRadius:999, fontSize:12, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .18s' }}>
               Skip
             </button>
-            <button onClick={advance} style={{ padding:'7px 18px', borderRadius:999, fontSize:13, fontWeight:500, border:'none', cursor:'pointer', fontFamily:'var(--font-body)', background:'linear-gradient(135deg,var(--accent),#7b6cf6)', color:'white', boxShadow:'0 4px 14px var(--accent-glow)', transition:'all .2s' }}>
+            <button onClick={advance} style={{ padding:'7px 16px', borderRadius:999, fontSize:13, fontWeight:500, border:'none', cursor:'pointer', fontFamily:'var(--font-body)', background:'linear-gradient(135deg,var(--accent),#7b6cf6)', color:'white', boxShadow:'0 4px 14px var(--accent-glow)', transition:'all .2s' }}>
               {current.cta}
             </button>
           </div>
@@ -291,8 +353,8 @@ export default function OnboardingTour({
       </div>
 
       <style>{`
-        @keyframes tourIn  { from { opacity:0; transform:translateY(14px) scale(0.95); } to { opacity:1; transform:none; } }
-        @keyframes tourOut { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(8px) scale(0.97); } }
+        @keyframes tourIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes tourOut { from { opacity:1; } to { opacity:0; } }
       `}</style>
     </>
   )

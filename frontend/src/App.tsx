@@ -111,6 +111,7 @@ function AppShell({
   const [page, setPage]         = useState<Page>('dashboard')
   const [material, setMaterial] = useState<any>(null)
   const [readerModeActive, setReaderModeActive] = useState(false)
+  const [tourRun, setTourRun]   = useState(0)
   const [theme, setTheme]       = useState<Theme>(() =>
     (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
   )
@@ -135,6 +136,17 @@ function AppShell({
     }
     window.addEventListener('shh:goto', handler)
     return () => window.removeEventListener('shh:goto', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = () => {
+      setPage('dashboard')
+      setReaderModeActive(false)
+      setShowTour(true)
+      setTourRun(run => run + 1)
+    }
+    window.addEventListener('shh:restart-tour', handler)
+    return () => window.removeEventListener('shh:restart-tour', handler)
   }, [])
 
   const recordStudy = () => {
@@ -177,8 +189,10 @@ function AppShell({
           {/* FIX: tour only renders when showTour is true — no polling, no flicker */}
           {showTour && (
             <OnboardingTour
+              key={tourRun}
               setPage={(p: Page) => navigate(p)}
               userId={user?.id}
+              forceShow={tourRun > 0}
               onDone={handleTourDone}
             />
           )}
