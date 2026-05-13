@@ -110,6 +110,7 @@ function AppShell({
 }) {
   const [page, setPage]         = useState<Page>('dashboard')
   const [material, setMaterial] = useState<any>(null)
+  const [readerModeActive, setReaderModeActive] = useState(false)
   const [theme, setTheme]       = useState<Theme>(() =>
     (localStorage.getItem('shh_theme') as Theme) ?? 'dark'
   )
@@ -142,6 +143,7 @@ function AppShell({
 
   const navigate = (p: Page) => {
     setPage(p)
+    if (p !== 'library') setReaderModeActive(false)
     if (p !== 'dashboard') recordStudy()
   }
 
@@ -160,7 +162,7 @@ function AppShell({
           <div className={isHome ? 'main-home' : 'main'} key={page}>
             <div className="page-enter">
               {page === 'dashboard'  && <Dashboard setPage={navigate} />}
-              {page === 'library'    && <Library setMaterial={setMaterial} setPage={navigate} />}
+              {page === 'library'    && <Library setMaterial={setMaterial} setPage={navigate} onReaderModeChange={setReaderModeActive} />}
               {page === 'chat'       && <Chat material={material} />}
               {page === 'pomodoro'   && <Pomodoro />}
               {page === 'settings'   && <Settings doSignOut={doSignOut} />}
@@ -169,7 +171,7 @@ function AppShell({
               {page === 'notes'      && <Notes />}
             </div>
           </div>
-          <FloatingNav page={page} setPage={navigate} />
+          {readerModeActive && <FloatingNav page={page} setPage={navigate} />}
           <MiniTimer currentPage={page} setPage={navigate} />
           <FeedbackButton />
           {/* FIX: tour only renders when showTour is true — no polling, no flicker */}

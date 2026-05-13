@@ -546,7 +546,15 @@ function RecapCard({ recap, onClose, onAsk }: { recap: RecapData; onClose: () =>
 const tabStyle = (a:boolean): React.CSSProperties => ({padding:'5px 14px',borderRadius:999,fontSize:12,cursor:'pointer',border:'0.5px solid var(--border)',fontFamily:'var(--font-body)',background:a?'var(--bg-pill)':'transparent',color:a?'var(--text-1)':'var(--text-3)',transition:'all .18s'})
 
 // ── Main Library ──────────────────────────────────────────────
-export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=>void; setPage:(p:Page)=>void }) {
+export default function Library({
+  setMaterial,
+  setPage,
+  onReaderModeChange,
+}: {
+  setMaterial:(m:any)=>void
+  setPage:(p:Page)=>void
+  onReaderModeChange?: (active:boolean)=>void
+}) {
   const [books,setBooks]               = useState<Book[]>(loadBooks)
   const [pdfMap,setPdfMap]             = useState<Map<string,ArrayBuffer>>(new Map())
   const [view,setView]                 = useState<LibView>('shelf')
@@ -567,6 +575,10 @@ export default function Library({ setMaterial, setPage }: { setMaterial:(m:any)=
   const toastRef = useRef<ReturnType<typeof setTimeout>|null>(null)
 
   useEffect(()=>{ saveBooks(books) },[books])
+  useEffect(() => {
+    onReaderModeChange?.(view === 'reader')
+    return () => onReaderModeChange?.(false)
+  }, [view, onReaderModeChange])
   useEffect(()=>{
     if(activeBook) localStorage.setItem('shh_session',JSON.stringify({bookTitle:`${activeBook.title} — ${activeBook.author}`,page:currentPage,totalPages}))
   },[activeBook,currentPage,totalPages])
