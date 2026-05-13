@@ -3,8 +3,13 @@ import { supabase, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, 
 import type { User } from '@supabase/supabase-js'
 
 export { recordStudyDay, getStreak }
-
-interface Props { children: (user: User, doSignOut: () => void) => React.ReactNode }
+interface Props {
+  children: (
+    user: User,
+    doSignOut: () => void,
+    tourDone: boolean
+  ) => React.ReactNode
+}
 
 // ── Check tour status — local first, then Supabase ────────────
 // Exported so App.tsx can call it too
