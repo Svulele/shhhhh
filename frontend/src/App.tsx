@@ -43,7 +43,7 @@ const NAV_LABELS: Record<string, string> = {
   notes: 'Notes', settings: 'Me',
 }
 
-function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
+function FloatingNav({ page, setPage, keepOpen = false }: { page: Page; setPage: (p: Page) => void; keepOpen?: boolean }) {
   const isHome  = page === 'dashboard'
   const [open, setOpen] = useState(true)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -51,19 +51,19 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     setOpen(true)
-    if (!isHome) timer.current = setTimeout(() => setOpen(false), 1800)
-  }, [isHome, page])
+    if (!isHome && !keepOpen) timer.current = setTimeout(() => setOpen(false), 1800)
+  }, [isHome, keepOpen, page])
 
   const enter = () => { if (timer.current) clearTimeout(timer.current); setOpen(true) }
   const leave = () => {
-    if (isHome) return
+    if (isHome || keepOpen) return
     timer.current = setTimeout(() => setOpen(false), 650)
   }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
   return (
-    <div className={`float-nav-wrap ${isHome ? 'home' : ''} ${open ? 'open' : 'asleep'}`} onMouseEnter={enter} onMouseLeave={leave}>
-      {!isHome && (
+    <div className={`float-nav-wrap ${isHome || keepOpen ? 'home' : ''} ${open ? 'open' : 'asleep'}`} onMouseEnter={enter} onMouseLeave={leave}>
+      {!isHome && !keepOpen && (
         <button className="float-nav-peek" onClick={enter} aria-label="Show navigation">
           <span />
         </button>
@@ -78,7 +78,7 @@ function FloatingNav({ page, setPage }: { page: Page; setPage: (p: Page) => void
               className={`float-nav-item ${active ? 'active' : ''}`}
               onClick={() => {
                 setPage(n.page)
-                if (!isHome) {
+                if (!isHome && !keepOpen) {
                   if (timer.current) clearTimeout(timer.current)
                   timer.current = setTimeout(() => setOpen(false), 650)
                 }
@@ -183,7 +183,7 @@ function AppShell({
               {page === 'notes'      && <Notes />}
             </div>
           </div>
-          {readerModeActive && <FloatingNav page={page} setPage={navigate} />}
+          <FloatingNav page={page} setPage={navigate} keepOpen={readerModeActive} />
           <MiniTimer currentPage={page} setPage={navigate} />
           <FeedbackButton />
           {/* FIX: tour only renders when showTour is true — no polling, no flicker */}
