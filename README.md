@@ -27,7 +27,7 @@ cd backend
 ../.venv/bin/uvicorn main:app --reload --port 8000
 ```
 
-Set backend variables from `backend/.env.example` in the server environment; the application does not load private keys from repository files. Vercel uses the root `vercel.json`; Render configuration is in `render.yaml`. Dashboard environment/runtime changes may need manual deployment.
+Set backend variables from `backend/.env.example` in the server environment; the application does not load private keys from repository files. Vercel settings are provided for both repository-root and frontend-root deployments; the live project uses `frontend/vercel.json`. Render configuration is in `render.yaml`. Dashboard environment/runtime changes may need manual deployment.
 
 ## Verification and remaining setup
 
