@@ -1,3 +1,4 @@
+import { installTouchPaging } from './touchPaging'
 import { keyboardShortcutsEnabled } from '../../useInputMode'
 import useOverlayBack from '../useOverlayBack';
 import '@fontsource/newsreader/latin-400.css';
@@ -75,6 +76,7 @@ export default function ReaderExperience({ book, buffer, currentPage, totalPages
     } }, [scrollToPage]);
     const onText = useCallback((page: number, data: PageText) => { textPages.current.set(page, data); if(textPages.current.size > 12) textPages.current.delete(textPages.current.keys().next().value!); latest.current.onTotal(data.totalPages); }, []);
     const go = useCallback((next: number) => { const page = Math.max(1, Math.min(next, latest.current.totalPages)); pendingInitial.current = false; bounds.current = { min: Math.min(bounds.current.min, page), max: Math.max(bounds.current.max, page) }; latest.current.onPage(page); scrollToPage(page); setSelection(null); }, [scrollToPage]);
+    useEffect(() => { if (stage && !settings && !notesOpen) return installTouchPaging(stage, direction => go(pageRef.current + direction)); }, [stage, go, settings, notesOpen]);
     useEffect(() => { if (!stage)
         return; let frame = 0;
         const candidates = new Map<number, HTMLElement>();

@@ -1,0 +1,14 @@
+[
+  {
+    "standalone": false,
+    "share": true,
+    "dismissal": true,
+    "shareHiddenWithoutAPI": true
+  },
+  {
+    "standalone": true,
+    "share": true,
+    "dismissal": true,
+    "shareHiddenWithoutAPI": true
+  }
+]

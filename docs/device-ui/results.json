@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "touch",
+    "liveHintUpdates": true,
+    "errors": []
+  },
+  {
+    "mode": "desktop",
+    "liveHintUpdates": true,
+    "errors": []
+  }
+]

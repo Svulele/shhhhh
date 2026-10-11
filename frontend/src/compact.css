@@ -67,3 +67,6 @@ html .library-menu-anchor .book-actions{position:relative;width:36px!important;h
 html .library-menu-anchor .book-actions::before{content:'';position:absolute;inset:-4px}
 
 @media(max-width:560px){html .settings-stat div>span{font-size:11px!important}}
+
+.device-tools{display:none}.home-screen-tip{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;background:var(--soft);border-radius:16px}.home-screen-tip p{margin:0;font-size:12px;line-height:1.5}
+@media(max-width:560px){.device-tools{display:block;margin:12px 0}}

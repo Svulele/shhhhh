@@ -1,6 +1,7 @@
+import InputHint from '../components/InputHint'
 import { keyboardShortcutsEnabled } from '../useInputMode'
 import useOverlayBack from '../components/useOverlayBack'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import type { Page } from '../App'
 import { supabase } from '../supabase'
 
@@ -13,7 +14,7 @@ interface TourStep {
   kicker: string
   title: string
   body: string
-  bullets?: string[]
+  bullets?: ReactNode[]
   cta: string
 }
 
@@ -42,7 +43,7 @@ const STEPS: TourStep[] = [
     kicker: 'While reading',
     title: 'Use reader mode',
     body: 'Open a book to enter reader mode. You can switch between original PDF view and a cleaner reading view, then mark the session done when you finish.',
-    bullets: ['Use the arrows or keyboard to move pages', 'Open notes without leaving the book', 'The app uses your current page as study context'],
+    bullets: [<InputHint touch="Swipe left or right to turn pages" keys="Use the arrows or keyboard to move pages" />, 'Open notes without leaving the book', 'The app uses your current page as study context'],
     cta: 'Show me AI help',
   },
   {
@@ -319,8 +320,8 @@ export default function OnboardingTour({
 
         {current.bullets && (
           <div style={{ display:'grid', gap:8, margin:'0 0 18px 56px' }}>
-            {current.bullets.map(item => (
-              <div key={item} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:12, color:'var(--text-2)', lineHeight:1.45 }}>
+            {current.bullets.map((item,index) => (
+              <div key={index} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:12, color:'var(--text-2)', lineHeight:1.45 }}>
                 <span style={{ width:5, height:5, borderRadius:'50%', background:'var(--accent)', marginTop:6, flexShrink:0, boxShadow:'0 0 10px var(--accent-glow)' }}/>
                 <span>{item}</span>
               </div>
