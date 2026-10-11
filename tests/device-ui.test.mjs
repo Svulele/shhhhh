@@ -29,3 +29,6 @@ test('InputHint renders touch copy or keyboard copy with CSS fallback',()=>{
  assert.equal(render(),'<span class="touch-hint">Tap to start or pause</span>')
  for(mode of ['mouse','keyboard'])assert.equal(render(),'<span class="kbd-hint">Space to start or pause · Esc to return</span>')
 })
+test('landscape phone hook uses orientation, short viewport and coarse pointer together',()=>{
+ let query;const hooks=moduleAt('../frontend/src/useLandscapePhone.ts',{'./useInput':{useMediaQuery:q=>{query=q;return true}}});assert.equal(hooks.useLandscapePhone(),true);assert.equal(query,'(orientation: landscape) and (max-height: 500px) and (pointer: coarse)')
+})

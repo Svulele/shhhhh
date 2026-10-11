@@ -5,6 +5,7 @@ import Icon from '../Icon'
 import useModalFocus from '../useModalFocus'
 
 export interface Profile {
+  rotateClock?: boolean; rotateClockAnyPage?: boolean
   name: string; ai: string; vibe: string; goals: string[]
   location: string; lat: number | null; lon: number | null; onboarded: boolean
 }

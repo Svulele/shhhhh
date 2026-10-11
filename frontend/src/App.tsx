@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import Dashboard from './pages/Dashboard'
 const Library = lazy(() => import('./pages/Library'))
 const Chat = lazy(() => import('./pages/Chat'))
-import Pomodoro, { TimerAlarm } from './pages/Pomodoro'
+import Pomodoro, { TimerAlarm, TimerFullscreen } from './pages/Pomodoro'
 const Settings = lazy(() => import('./pages/Settings'))
 const Flashcards = lazy(() => import('./pages/Flashcards'))
 const StudyPlan = lazy(() => import('./pages/Studyplan'))
@@ -156,6 +156,7 @@ function AppShell({
             </Suspense></div>
           </main>
           <Navigation page={page} navigate={navigate} signOut={guardedSignOut} open={navOpen} setOpen={setNavOpen} />
+          <TimerFullscreen page={page} reader={readerModeActive} />
           <TimerAlarm />
           {/* FIX: tour only renders when showTour is true — no polling, no flicker */}
           {showTour && (

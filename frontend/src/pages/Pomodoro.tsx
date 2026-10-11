@@ -1,9 +1,13 @@
+import { useLandscapePhone } from '../useLandscapePhone'
+import { useWakeLock } from '../useWakeLock'
+import { clockStore } from '../clockStore'
+import { clockEligible } from '../clockRules'
 import InputHint from '../components/InputHint'
 import { plural } from '../plural'
 import { keyboardShortcutsEnabled } from '../useInputMode'
 import useOverlayBack from '../components/useOverlayBack'
 import { aiFetch, API_URL } from '../api'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import { timerStore, setAlarmCallback } from '../timerStore'
 import type { TimerState, TimerMode } from '../timerStore'
 import Icon from '../components/Icon'
@@ -25,12 +29,12 @@ function suspendIdleAudio() { if (!_nodes.length && !alarmNodes.size && _ctx?.st
 
 function stopAmbient() {
   _nodes.forEach(n => { try { (n as any).stop?.(); n.disconnect() } catch {} })
-  _nodes = []; _cur = null; audioGeneration++; suspendIdleAudio()
+  _nodes = []; _cur = null; window.dispatchEvent(new Event('shh:ambient')); audioGeneration++; suspendIdleAudio()
 }
 
 async function playAmbient(type: string) {
   if (_cur === type) return
-  stopAmbient(); _cur = type
+  stopAmbient(); _cur = type; window.dispatchEvent(new Event('shh:ambient'))
   try {
     const generation = audioGeneration
     const ctx = audioContext()
@@ -171,13 +175,43 @@ function DoneOverlay({ mode, onDismiss }: { mode: TimerMode; onDismiss: () => vo
   )
 }
 
+function useAmbient() {
+  const [sound, setSound] = useState<string|null>(()=>_cur);
+  useEffect(() => { const sync=()=>setSound(_cur);window.addEventListener('shh:ambient',sync);return()=>window.removeEventListener('shh:ambient',sync); }, []);
+  const change=useCallback(async(key:string|null)=>{ if(!key||_cur===key){stopAmbient();return;}try{await playAmbient(key)}catch{stopAmbient()} },[]);
+  return {sound, change};
+}
+const readClockPreferences=()=>{try{const p=JSON.parse(localStorage.getItem('shh_profile')??'{}');return `${p.rotateClock!==false}:${p.rotateClockAnyPage===true}`;}catch{return 'true:false'}};
+const subscribeClockPreferences=(cb:()=>void)=>{window.addEventListener('shh:profile-updated',cb);window.addEventListener('storage',cb);return()=>{window.removeEventListener('shh:profile-updated',cb);window.removeEventListener('storage',cb)}};
+export function TimerFullscreen({page, reader}:{page:string;reader:boolean}) {
+  const landscape=useLandscapePhone();
+  const running=useSyncExternalStore(timerStore.subscribe,()=>timerStore.get().running,()=>false);
+  const preferences=useSyncExternalStore(subscribeClockPreferences,readClockPreferences,()=> 'true:false');
+  const state=useSyncExternalStore(clockStore.subscribe,clockStore.getSnapshot,clockStore.getSnapshot);
+  const [rotate,anyPage]=preferences.split(':').map(value=>value==='true');
+  const eligible=clockEligible(page,reader,running,rotate,anyPage);
+  useEffect(()=>{clockStore.dispatch({type:'environment',landscape,eligible})},[landscape,eligible]);
+  useEffect(()=>()=>clockStore.dispatch({type:'close',landscape:false}),[]);
+  const exit=useCallback(()=>clockStore.dispatch({type:'close',landscape:matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)').matches}),[]);
+  const {sound,change}=useAmbient();
+  return state.source ? <FocusMode source={state.source} sound={sound} onSound={change} onExit={exit}/> : null;
+}
+
 // ── Full-screen focus mode ────────────────────────────────────
-function FocusMode({ sound, onSound, onExit }: {
+function FocusMode({ source, sound, onSound, onExit }: {
+  source: 'auto'|'manual';
   sound: string|null; onSound: (k:string|null)=>void; onExit: ()=>void
 }) {
   useOverlayBack(true, onExit)
   const t = useTimerState()
   const { mm, ss, pct } = timerStore.fmt()
+  const landscape=useLandscapePhone();
+  const [dockShown,setDockShown]=useState(true);
+  const [dockActivity,setDockActivity]=useState(0);
+  useWakeLock(t.running);
+  useEffect(()=>timerStore.subscribe(next=>{if(!next.running)setDockShown(true)}),[]);
+  useEffect(()=>{if(!landscape||!t.running||!dockShown)return;const id=setTimeout(()=>setDockShown(false),4000);return()=>clearTimeout(id)},[landscape,t.running,dockShown,dockActivity]);
+  const touchClock=()=>{if(document.documentElement.dataset.input!=='touch'||window.getSelection()?.toString())return;if(landscape){setDockShown(value=>!value);setDockActivity(value=>value+1)}else timerStore.toggle()};
   const ref = useRef<HTMLDivElement>(null)
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -189,14 +223,14 @@ function FocusMode({ sound, onSound, onExit }: {
     const oldOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     let entered = false, disposed = false
-    if (element?.requestFullscreen) void element.requestFullscreen().then(() => { if(disposed) { if(document.fullscreenElement===element) void document.exitFullscreen(); } else entered = true }).catch(() => { /* fixed overlay fallback */ })
+    if (source === 'manual' && element?.requestFullscreen) void element.requestFullscreen().then(() => { if(disposed) { if(document.fullscreenElement===element) void document.exitFullscreen(); } else entered = true }).catch(() => { /* fixed overlay fallback */ })
     element?.querySelector<HTMLButtonElement>('button[aria-label="Close full screen"]')?.focus()
     const change = () => { if (entered && !document.fullscreenElement) onExit() }
     const key = (e: KeyboardEvent) => {
       if(keyboardShortcutsEnabled() && e.key==='Escape'){e.preventDefault();onExit()}
       if(keyboardShortcutsEnabled() && e.key===' ' && !(e.target as HTMLElement).closest('button,input,select,textarea,[contenteditable]:not([contenteditable=false])')){e.preventDefault();timerStore.toggle()}
       if(e.key==='Tab') {
-        const buttons = Array.from(element?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || [])
+        const buttons = Array.from(element?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || []).filter(button=>!button.closest('[inert]'))
         const first=buttons[0],last=buttons[buttons.length-1]
         if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus()}
         else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus()}
@@ -213,16 +247,16 @@ function FocusMode({ sound, onSound, onExit }: {
       previous?.focus()
       if(previewTimer.current){clearTimeout(previewTimer.current);stopAlarm()}
     }
-  }, [onExit])
+  }, [onExit,source])
   const preview = (type: 'bell'|'chime'|'beep') => {
     if(previewTimer.current) clearTimeout(previewTimer.current)
     timerStore.setAlarmType(type);playAlarm(type)
     previewTimer.current=setTimeout(()=>{stopAlarm();previewTimer.current=null},1200)
   }
-  return createPortal(<div className="fullscreen-focus" ref={ref} role="dialog" aria-modal="true" aria-label="Full screen focus timer">
+  return createPortal(<div className={`fullscreen-focus ${landscape && !dockShown ? 'clock-dock-hidden' : ''}`} data-source={source} ref={ref} role="dialog" aria-modal="true" aria-label="Full screen focus timer">
     <div className="fullscreen-top"><span>{plural(t.sessions, 'session')}</span><div className="mode-segment">{(['work','break'] as TimerMode[]).map(m=><button key={m} aria-pressed={t.mode===m} onClick={()=>timerStore.switchMode(m)}>{m==='work'?'Focus':'Break'}</button>)}</div><button className="round-button" aria-label="Close full screen" onClick={onExit}><Icon name="close" /></button></div>
-    <div className="fullscreen-clock" onClick={() => { if(document.documentElement.dataset.input === 'touch' && !window.getSelection()?.toString()) timerStore.toggle() }}><div role="timer" aria-label={`${plural(Number(mm), 'minute')} ${plural(Number(ss), 'second')} remaining`}>{mm}:{ss}</div><div className="fullscreen-progress" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${pct}%`}} /></div><p>{t.mode==='work'?'Nothing else needs your attention right now.':'Breathe. Let your mind wander.'}</p></div>
-    <div className="fullscreen-bottom"><div className="fullscreen-dock"><button className="round-button primary" aria-label={t.running?'Pause session':'Start session'} onClick={timerStore.toggle}><Icon name={t.running?'pause':'play'} size={26} /></button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><Icon name="reset" /></button><span className="dock-divider" />{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="round-button" key={k} title={n} aria-label={n} aria-pressed={sound===k} onClick={()=>onSound(k)}><Icon name={k} /></button>)}<button className="round-button" aria-label="Mute ambient sound" aria-pressed={!sound} onClick={()=>onSound(null)}><Icon name="mute" /></button></div><div className="alarm-row"><span className="eyebrow">Alarm</span>{(['bell','chime','beep'] as const).map(type=><button className="ui-button" key={type} aria-pressed={t.alarmType===type} onClick={()=>preview(type)}>{type[0].toUpperCase()+type.slice(1)}</button>)}</div><small className="fullscreen-help"><InputHint touch="Tap to start or pause" keys="Space to start or pause · Esc to return" /></small></div>
+    <div className="fullscreen-clock" onClick={touchClock}><div role="timer" aria-label={`${plural(Number(mm), 'minute')} ${plural(Number(ss), 'second')} remaining`}>{mm}:{ss}</div><div className="fullscreen-progress" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${pct}%`}} /></div><p>{t.mode==='work'?'Nothing else needs your attention right now.':'Breathe. Let your mind wander.'}</p></div>
+    <div className="fullscreen-bottom" onPointerDown={()=>setDockActivity(value=>value+1)} inert={landscape && !dockShown}><div className="fullscreen-dock"><button className="round-button primary" aria-label={t.running?'Pause session':'Start session'} onClick={timerStore.toggle}><Icon name={t.running?'pause':'play'} size={26} /></button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><Icon name="reset" /></button><span className="dock-divider" />{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="round-button" key={k} title={n} aria-label={n} aria-pressed={sound===k} onClick={()=>onSound(k)}><Icon name={k} /></button>)}<button className="round-button" aria-label="Mute ambient sound" aria-pressed={!sound} onClick={()=>onSound(null)}><Icon name="mute" /></button></div><div className="alarm-row"><span className="eyebrow">Alarm</span>{(['bell','chime','beep'] as const).map(type=><button className="ui-button" key={type} aria-pressed={t.alarmType===type} onClick={()=>preview(type)}>{type[0].toUpperCase()+type.slice(1)}</button>)}</div><small className="fullscreen-help"><InputHint touch={landscape?"Tap the clock to show or hide controls":"Tap to start or pause"} keys="Space to start or pause · Esc to return" /></small></div>
   </div>,document.body)
 }
 
@@ -254,20 +288,12 @@ export default function Pomodoro() {
   useEffect(() => timerStore.subscribe(next => setTimerConfig(previous =>
     previous.mode === next.mode && previous.running === next.running && previous.sessions === next.sessions && previous.workMins === next.workMins && previous.brkMins === next.brkMins && previous.alarmType === next.alarmType ? previous : next
   )), [])
-  const [sound,      setSound]      = useState<string|null>(()=>_cur)
+  const {sound,change:handleSound}=useAmbient()
   const [showCustom, setShowCustom] = useState(false)
   const [customWork, setCustomWork] = useState(t.workMins)
   const [customBrk,  setCustomBrk]  = useState(t.brkMins)
   const [aiLoading,  setAiLoading]  = useState(false)
   const [aiTip,      setAiTip]      = useState<string|null>(null)
-  const [fullscreen, setFullscreen] = useState(false)
-  const exitFullscreen = useCallback(()=>setFullscreen(false),[])
-
-  const handleSound = useCallback(async (key: string|null) => {
-    if (!key || sound === key) { stopAmbient(); setSound(null); return }
-    setSound(key); try { await playAmbient(key) } catch { stopAmbient(); setSound(null) }
-  }, [sound])
-
   const applyCustom = () => {
     timerStore.setDurations(customWork, customBrk); setShowCustom(false)
   }
@@ -291,14 +317,13 @@ export default function Pomodoro() {
   }
 
   useEffect(() => {
-    const handle = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !(e.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) { e.preventDefault(); setFullscreen(true) } }
+    const handle = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !(e.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) { e.preventDefault(); clockStore.dispatch({type:'manual'}) } }
     window.addEventListener('keydown',handle)
     return () => window.removeEventListener('keydown',handle)
   }, [])
   return <>
-      {fullscreen && <FocusMode sound={sound} onSound={handleSound} onExit={exitFullscreen}/>}
       <div className="page-scroll"><section className="focus-page">
-        <div className="focus-heading"><div><h1 className="page-title">Time to <em className="title-accent">focus.</em></h1><p className="page-subtitle">One thing at a time. You're doing enough.</p></div><button className="ui-button" onClick={()=>setFullscreen(true)}><ExpandIcon />Full screen</button></div>
+        <div className="focus-heading"><div><h1 className="page-title">Time to <em className="title-accent">focus.</em></h1><p className="page-subtitle">One thing at a time. You're doing enough.</p></div><button className="ui-button" onClick={()=>clockStore.dispatch({type:'manual'})}><ExpandIcon />Full screen</button></div>
         <div className="focus-card soft-card">
           <div className="focus-toolbar">
           <div className="mode-segment">{(['work','break'] as TimerMode[]).map(m=><button key={m} aria-pressed={t.mode===m} onClick={()=>timerStore.switchMode(m)}>{m==='work'?`Focus · ${t.workMins} min`:`Break · ${t.brkMins} min`}</button>)}</div>
