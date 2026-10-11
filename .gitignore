@@ -36,3 +36,8 @@ venv/
 .venv/
 *.pem
 *.key
+
+# Environment variants and local deployment metadata
+.env.*
+.vercel/
+frontend/.vercel/

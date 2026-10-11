@@ -1,0 +1,86 @@
+[
+  {
+    "width": 280,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 280,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 412,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 412,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 844,
+    "theme": "light",
+    "reader": true,
+    "errors": []
+  },
+  {
+    "width": 844,
+    "theme": "dark",
+    "reader": true,
+    "errors": []
+  }
+]

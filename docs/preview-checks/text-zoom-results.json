@@ -1,0 +1,305 @@
+{
+  "conditions": "Chrome mobile 320/390x844. Text-only zoom proxy scales computed font/line sizes to 100%,120%,150%; not native Safari text sizing or iOS Display Zoom.",
+  "records": [
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.2,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 320,
+      "scale": 1.5,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.2,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "library",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "reader",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "reader-settings",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "chat",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "settings",
+      "overflow": false,
+      "clipped": [],
+      "build": "Build 12b36ea · 2026-10-11 11:54:40 UTC"
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "pomodoro",
+      "overflow": false,
+      "clipped": []
+    },
+    {
+      "width": 390,
+      "scale": 1.5,
+      "name": "dashboard",
+      "overflow": false,
+      "clipped": []
+    }
+  ]
+}

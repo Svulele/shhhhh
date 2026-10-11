@@ -1,0 +1,40 @@
+[
+  {
+    "test": "Settings opens from account menu",
+    "pass": true
+  },
+  {
+    "test": "Back from settings returns Home",
+    "pass": true
+  },
+  {
+    "test": "Long notes list mounts only nearby contents",
+    "pass": true,
+    "detail": 1
+  },
+  {
+    "test": "Note actions have 44px targets",
+    "pass": true
+  },
+  {
+    "test": "Keyboard resize sets --kb and hides tabs",
+    "pass": true
+  },
+  {
+    "test": "Focused feedback field and action are both visible",
+    "pass": true
+  },
+  {
+    "test": "Back dismisses feedback before page",
+    "pass": true
+  },
+  {
+    "test": "Focus frame sampling under 4x CPU + Slow 4G",
+    "pass": true,
+    "detail": {
+      "frames": 121,
+      "over50ms": 0,
+      "maxMs": 16.800000000000182
+    }
+  }
+]

@@ -1,0 +1,112 @@
+frontend/src/pages/Chat.tsx:185:  const {listening,toggle:toggleVoice}=useVoice(t=>{setInput(t);setTimeout(()=>sendMsg(t),200)})
+frontend/src/pages/Chat.tsx:211:  useEffect(()=>{if(!material?.question)return;const id=setTimeout(()=>sendMsg(material.question),400);return()=>clearTimeout(id)},[])
+frontend/src/pages/Chat.tsx:216:  useEffect(()=>{const sync=()=>setCurVibe(getProf().vibe??'balanced');window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[])
+frontend/src/pages/Library.tsx:84:window.addEventListener('shh:clear-device-data',()=>{
+frontend/src/pages/Library.tsx:238:    document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
+frontend/src/pages/Library.tsx:362:  const toastRef = useRef<ReturnType<typeof setTimeout>|null>(null)
+frontend/src/pages/Library.tsx:367:    if(ttl>0) toastRef.current=setTimeout(()=>setToast(null),ttl)
+frontend/src/AuthGate.tsx:66:    const wait=()=>new Promise(resolve=>setTimeout(resolve,Math.max(0,800-(Date.now()-started))))
+frontend/src/AuthGate.tsx:80:      await new Promise(resolve=>setTimeout(resolve,Math.max(0,800-(Date.now()-loadingStarted))))
+frontend/src/AuthGate.tsx:93:      }else if(session?.user){const u=session.user;setTimeout(()=>{if(active)void ready(u)},0)}
+frontend/src/AuthGate.tsx:95:    return()=>{active=false;++generation;subscription.unsubscribe()}
+frontend/src/pages/Settings.tsx:33:  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+frontend/src/pages/Settings.tsx:46:    window.addEventListener('beforeunload', beforeUnload)
+frontend/src/pages/Settings.tsx:47:    window.addEventListener('shh:before-leave', beforeLeave)
+frontend/src/pages/Settings.tsx:51:  const restoreSaveFocus = () => { if (document.activeElement?.closest('.settings-save')) requestAnimationFrame(() => document.querySelector<HTMLElement>('.settings-tabs [aria-selected=true]')?.focus()) }
+frontend/src/pages/Settings.tsx:55:    if (!profile.name.trim()) { setNameError(true); setTab('profile'); requestAnimationFrame(() => nameRef.current?.focus()); return }
+frontend/src/pages/Settings.tsx:70:      toastTimer.current = setTimeout(() => setSaved(false), 2000)
+frontend/src/pwa.ts:29:// Uses setTimeout to fire a local notification at 8pm if not yet studied today
+frontend/src/pwa.ts:42:  setTimeout(async () => {
+frontend/src/pages/Dashboard.tsx:39:    if (frame < 160) requestAnimationFrame(tick)
+frontend/src/pages/Dashboard.tsx:42:  requestAnimationFrame(tick)
+frontend/src/pages/Dashboard.tsx:53:    const t = setTimeout(onDismiss, 6000)
+frontend/src/pages/Dashboard.tsx:202:    window.addEventListener('shh:study-history-updated', refresh)
+frontend/src/pages/Dashboard.tsx:203:    window.addEventListener('storage', refresh)
+frontend/src/pages/Dashboard.tsx:294:          setTimeout(() => setShowMilestone(true), 1200) // slight delay for drama
+frontend/src/timerStore.ts:29:let interval: ReturnType<typeof setInterval> | null = null
+frontend/src/timerStore.ts:73:  subscribe(fn: Listener) {
+frontend/src/timerStore.ts:82:    interval = setInterval(tick, 1000)
+frontend/src/timerStore.ts:131:if (typeof window.addEventListener === 'function') window.addEventListener('shh:clear-device-data',()=>{
+frontend/src/components/WindowItem.tsx:11:    const observer = new IntersectionObserver(([entry]) => {
+frontend/src/pages/Flashcards.tsx:216:    window.addEventListener('shh:cards-updated', handler)
+frontend/src/App.tsx:58:    window.addEventListener('popstate', back)
+frontend/src/App.tsx:80:  useEffect(() => { const media=window.matchMedia('(prefers-color-scheme: dark)'); const sync=()=>{if(!localStorage.getItem('shh_theme'))setTheme(media.matches?'dark':'light')}; media.addEventListener('change',sync); return()=>media.removeEventListener('change',sync) },[])
+frontend/src/App.tsx:87:    window.addEventListener('shh:goto', handler)
+frontend/src/App.tsx:98:    window.addEventListener('shh:restart-tour', handler)
+frontend/src/App.tsx:197:    window.addEventListener('keydown', handler)
+frontend/src/mobileUX.ts:4:  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean; addEventListener?: (name: string, callback: () => void) => void } }
+frontend/src/mobileUX.ts:8:  motion.addEventListener('change', capabilities)
+frontend/src/mobileUX.ts:9:  nav.connection?.addEventListener?.('change', capabilities)
+frontend/src/mobileUX.ts:10:  let frame = 0, scrollTimer: ReturnType<typeof setTimeout>
+frontend/src/mobileUX.ts:13:    frame = requestAnimationFrame(() => {
+frontend/src/mobileUX.ts:20:      if (field && kb > 100) requestAnimationFrame(() => {
+frontend/src/mobileUX.ts:26:  window.visualViewport?.addEventListener('resize', viewport, { passive: true })
+frontend/src/mobileUX.ts:27:  window.visualViewport?.addEventListener('scroll', viewport, { passive: true })
+frontend/src/mobileUX.ts:28:  window.addEventListener('resize', viewport, { passive: true })
+frontend/src/mobileUX.ts:29:  document.addEventListener('focusin', event => {
+frontend/src/mobileUX.ts:33:      setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, 250)
+frontend/src/mobileUX.ts:36:  document.addEventListener('focusout', viewport)
+frontend/src/mobileUX.ts:38:  document.addEventListener('visibilitychange', visibility)
+frontend/src/mobileUX.ts:39:  document.addEventListener('scroll', () => {
+frontend/src/mobileUX.ts:42:    scrollTimer = setTimeout(() => root.classList.remove('scrolling'), 180)
+frontend/src/mobileUX.ts:49:  new MutationObserver(theme).observe(root, { attributes: true, attributeFilter: ['data-theme'] })
+frontend/src/perfDebug.ts:5:  const timeout = window.setTimeout.bind(window), clearTimeoutNative = window.clearTimeout.bind(window)
+frontend/src/perfDebug.ts:6:  const interval = window.setInterval.bind(window), clearIntervalNative = window.clearInterval.bind(window)
+frontend/src/perfDebug.ts:7:  window.setTimeout = ((fn: TimerHandler, delay?: number, ...args: unknown[]) => { const id = timeout(() => { timers.delete(id); if (typeof fn === 'function') fn(...args) }, delay); timers.add(id); return id }) as typeof window.setTimeout
+frontend/src/perfDebug.ts:9:  window.setInterval = ((fn: TimerHandler, delay?: number, ...args: unknown[]) => { const id = interval(fn, delay, ...args); intervals.add(id); return id }) as typeof window.setInterval
+frontend/src/perfDebug.ts:25:  const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener
+frontend/src/perfDebug.ts:27:  EventTarget.prototype.addEventListener = function(type, listener, options) {
+frontend/src/perfDebug.ts:42:  const longObserver = typeof PerformanceObserver !== 'undefined' && PerformanceObserver.supportedEntryTypes?.includes('longtask') ? new PerformanceObserver(list => { longTasks += list.getEntries().length }) : null
+frontend/src/perfDebug.ts:55:  const tick = (now: number) => { if(previous) frames.push({at:now,delta:now-previous}); previous=now; frames=frames.filter(f=>now-f.at<=5000); frame=requestAnimationFrame(tick) }
+frontend/src/perfDebug.ts:56:  const visibility = () => { cancelAnimationFrame(frame); previous=0; frames=[]; if(!document.hidden) frame=requestAnimationFrame(tick) }
+frontend/src/perfDebug.ts:57:  document.addEventListener('visibilitychange',visibility); visibility(); interval(update,1000); update()
+frontend/src/pages/Onboardingtour.tsx:144:  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+frontend/src/pages/Onboardingtour.tsx:148:      const t = setTimeout(() => setVisible(true), 120)
+frontend/src/pages/Onboardingtour.tsx:155:      const t = setTimeout(() => setVisible(true), 900)
+frontend/src/pages/Onboardingtour.tsx:166:    window.addEventListener('keydown', handler)
+frontend/src/pages/Onboardingtour.tsx:179:    pollRef.current = setInterval(() => {
+frontend/src/pages/Onboardingtour.tsx:186:    window.addEventListener('resize', onResize)
+frontend/src/pages/Onboardingtour.tsx:201:    setTimeout(async () => {
+frontend/src/pages/Onboardingtour.tsx:211:    setTimeout(() => {
+frontend/src/pages/Onboardingtour.tsx:223:    setTimeout(() => {
+frontend/src/components/TopBar.tsx:22:    document.addEventListener('pointerdown', outside)
+frontend/src/components/TopBar.tsx:67:  useEffect(() => { return timerStore.subscribe(setTimer) }, [compact])
+frontend/src/components/Navigation.tsx:23:    document.addEventListener('pointerdown', close)
+frontend/src/components/useOverlayBack.ts:13:    const setup = setTimeout(async () => {
+frontend/src/components/useOverlayBack.ts:24:    window.addEventListener('popstate', pop)
+frontend/src/components/useOverlayBack.ts:32:          window.addEventListener('popstate', complete, { once: true })
+frontend/src/pages/Pomodoro.tsx:130:  useEffect(() => { return timerStore.subscribe(setState) }, [])
+frontend/src/pages/Pomodoro.tsx:146:    window.addEventListener('keydown', h)
+frontend/src/pages/Pomodoro.tsx:179:  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+frontend/src/pages/Pomodoro.tsx:202:    document.addEventListener('fullscreenchange',change)
+frontend/src/pages/Pomodoro.tsx:203:    document.addEventListener('keydown',key)
+frontend/src/pages/Pomodoro.tsx:217:    previewTimer.current=setTimeout(()=>{stopAlarm();previewTimer.current=null},1200)
+frontend/src/pages/Pomodoro.tsx:230:  useEffect(()=>{const sync=()=>setHost(document.fullscreenElement || document.body);document.addEventListener('fullscreenchange',sync);return()=>document.removeEventListener('fullscreenchange',sync)},[])
+frontend/src/pages/Pomodoro.tsx:251:  useEffect(() => timerStore.subscribe(next => setTimerConfig(previous =>
+frontend/src/pages/Pomodoro.tsx:292:    window.addEventListener('keydown',handle)
+frontend/src/components/reader/ReaderExperience.tsx:46:        return; const observer = new IntersectionObserver(entries => { if (ref.current && !entries[0].isIntersecting) setMeasuredHeight(ref.current.getBoundingClientRect().height); setNear(entries[0].isIntersecting); }, { root, rootMargin: '380px 0px' }); observer.observe(ref.current); return () => observer.disconnect(); }, [root]);
+frontend/src/components/reader/ReaderExperience.tsx:74:        requestAnimationFrame(() => scrollToPage(page));
+frontend/src/components/reader/ReaderExperience.tsx:81:        const observer = new IntersectionObserver(entries => {
+frontend/src/components/reader/ReaderExperience.tsx:89:        return; frame = requestAnimationFrame(() => { frame = 0; setSelection(null); const top = stage.getBoundingClientRect().top + Math.min(100, stage.clientHeight * .15), pages = Array.from(candidates.values()).sort((a, b) => Number(a.dataset.pageNumber) - Number(b.dataset.pageNumber)); const visible = pages.find(el => el.getBoundingClientRect().bottom > top) || pages[pages.length - 1]; if (!visible)
+frontend/src/components/reader/ReaderExperience.tsx:93:    } }); }; stage.addEventListener('scroll', scroll, { passive: true }); return () => { observer.disconnect(); stage.removeEventListener('scroll', scroll); cancelAnimationFrame(frame); }; }, [stage]);
+frontend/src/components/reader/ReaderExperience.tsx:101:    } }; document.addEventListener('keydown', key); return () => document.removeEventListener('keydown', key); }, [go, settings, notesOpen]);
+frontend/src/components/reader/ReaderExperience.tsx:102:    useEffect(() => { let frame = 0; const capture = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { const s = window.getSelection(); if (!s || s.isCollapsed || !s.rangeCount) {
+frontend/src/components/reader/ReaderExperience.tsx:109:        part.setEnd(range.endContainer, range.endOffset); return { page: Number(el.dataset.pageNumber), text: part.toString().replace(/^\s*PAGE \d+\s*/, '').trim() }; }).filter(part => part.text); setSelection({ text, page: Number(a.dataset.pageNumber), toPage: Number(b.dataset.pageNumber), segments, x: rect.left + rect.width / 2, y: rect.top - 8 }); }); }; document.addEventListener('selectionchange', capture); stage?.addEventListener('mouseup', capture); stage?.addEventListener('touchend', capture); const outside = (e: PointerEvent) => { if (!(e.target as Element).closest('.reader-selection') && !stage?.contains(e.target as Node))
+frontend/src/components/reader/ReaderExperience.tsx:110:        setSelection(null); }; document.addEventListener('pointerdown', outside); return () => { cancelAnimationFrame(frame); document.removeEventListener('selectionchange', capture); stage?.removeEventListener('mouseup', capture); stage?.removeEventListener('touchend', capture); document.removeEventListener('pointerdown', outside); }; }, [stage]);
+frontend/src/components/reader/ReaderExperience.tsx:114:        let previous = stage.scrollTop, frame = 0, idle: ReturnType<typeof setTimeout>;
+frontend/src/components/reader/ReaderExperience.tsx:116:        const observer = new ResizeObserver(measure);
+frontend/src/components/reader/ReaderExperience.tsx:122:            frame = requestAnimationFrame(() => {
+frontend/src/components/reader/ReaderExperience.tsx:128:                clearTimeout(idle); idle = setTimeout(reveal, 1400);
+frontend/src/components/reader/ReaderExperience.tsx:131:        stage.addEventListener('scroll', scroll, { passive: true });
+frontend/src/components/reader/ReaderExperience.tsx:132:        stage.addEventListener('click', reveal);
+frontend/src/components/reader/ReaderExperience.tsx:133:        dock?.addEventListener('focusin', reveal);
+frontend/src/components/reader/ReaderExperience.tsx:153:    const changeMode = useCallback((next: 'ebook' | 'pdf') => { setMode(next); setSelection(null); window.getSelection()?.removeAllRanges(); requestAnimationFrame(() => scrollToPage(pageRef.current)); }, [scrollToPage]);
+frontend/src/components/reader/ReaderExperience.tsx:157:    return createPortal(<div ref={shell} className={`reader-shell ${notesOpen ? 'notes-open' : ''} ${selection ? 'selection-active' : ''} ${preferences.columns === 2 ? 'reader-two' : ''} reader-${mode}`} data-tone={preferences.tone} style={{ '--reader-size': `${preferences.size}px`, '--reader-leading': preferences.spacing, '--reader-font': preferences.typeface === 'sans' ? "'Plus Jakarta Sans',sans-serif" : "Newsreader,Georgia,serif" } as CSSProperties}><ReaderTopBar title={book.title} page={currentPage} total={totalPages} progress={progress} mode={mode} onMode={changeMode} onBack={onClose} settingsOpen={settings} notesOpen={notesOpen} onSettings={() => { setSettings(v => !v); setNotesOpen(false); }} onNotes={() => { setNotesOpen(v => !v); setSettings(false); }} onDone={() => void finish()}/><div className="reader-stage" ref={setStage} role="region" aria-label="Book pages" tabIndex={0}><div className="reader-article">{Array.from({ length: totalPages }, (_, i) => <PageSlot key={i + 1} page={i + 1} root={stage} book={book} buffer={buffer} mode={mode} zoom={zoom} notes={bookNotes} loadDocument={loadDocument} loadText={loadText} onText={onText} onReady={onReady} onPdf={showPdf}/>)}</div></div><PageDock page={currentPage} total={totalPages} mode={mode} zoom={zoom} onPage={go} onZoom={setZoom}/>{settings && <ReaderSettings preferences={preferences} onChange={changePreferences} onClose={() => setSettings(false)}/>}{notesOpen && <NotesPanel notes={bookNotes} page={currentPage} onClose={() => { setNotesOpen(false); requestAnimationFrame(() => shell.current?.querySelector<HTMLElement>('.reader-notes-trigger')?.focus()); }} onSave={saveNote} onDelete={id => { const all = readNotes().filter(n => n.id !== id); writeNotes(all); setNotes(all); }}/>}{selection && !settings && !notesOpen && <SelectionToolbar selection={selection} onHighlight={() => { const segments = selection.segments?.length ? selection.segments : [{ page: selection.page, text: selection.text }]; const created = segments.map((segment, i) => ({ id: `hl_${Date.now()}_${i}`, bookId: book.id, page: segment.page, text: segment.text, createdAt: Date.now() })); const all = [...readNotes(), ...created]; writeNotes(all); setNotes(all); setAnnouncement('Highlight saved'); clearSelection(); }} onNote={() => { saveNote(selection.text, selection.page); setNotesOpen(true); }} onAsk={() => { latest.current.onAsk(selection.text, selection.page, selection.toPage); }} onCard={saveCard} onExam={tag => { addExamMark({ bookId: book.id, bookTitle: book.title, page: selection.page, text: selection.text, tag }); setAnnouncement('Exam mark saved'); clearSelection(); }}/>}<span className="reader-sr-only" role="status" aria-live="polite">{announcement}</span></div>, document.body);
+frontend/src/components/reader/ReaderControls.tsx:23:    useEffect(() => timerStore.subscribe(setTimer), []);
+frontend/src/components/reader/ReaderControls.tsx:41:        onClose(); }; document.addEventListener('pointerdown', outside); return () => document.removeEventListener('pointerdown', outside); }, [onClose]);
+frontend/src/components/reader/ReaderControls.tsx:60:}) { const ref = useRef<HTMLDivElement>(null); const [examOpen, setExamOpen] = useState(false); const [position, setPosition] = useState({ x: selection.x, y: selection.y }); useEffect(() => { const frame = requestAnimationFrame(() => { const box = ref.current?.getBoundingClientRect(); if (box)
+frontend/src/components/useModalFocus.ts:24:    document.addEventListener('keydown', key)
+frontend/src/components/auth/AuthLayout.tsx:9:  useEffect(()=>{const media=matchMedia('(prefers-color-scheme: dark)');const sync=()=>{if(!localStorage.getItem('shh_theme'))setTheme(media.matches?'dark':'light')};media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
+frontend/src/components/auth/Landing.tsx:50:    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+frontend/src/components/legal/PrivacyTools.tsx:16:    window.addEventListener('shh:feedback', show); window.addEventListener('shh:ai-consent', consent)
+frontend/src/components/reader/ReaderPages.tsx:52:        return; const resize = () => setWidth(Math.min(720, Math.max(1, parent.clientWidth))); const frame = requestAnimationFrame(resize); const observer = new ResizeObserver(resize); observer.observe(parent); return () => { cancelAnimationFrame(frame); observer.disconnect(); }; }, []);

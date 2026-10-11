@@ -1,3 +1,5 @@
+import { canHover, keyboardShortcutsEnabled } from '../useInputMode'
+import useOverlayBack from './useOverlayBack'
 import { useEffect, useRef, useState } from 'react'
 import type { Page } from '../App'
 import Icon from './Icon'
@@ -13,6 +15,7 @@ const items: { page: Page; label: string; icon: string }[] = [
 ]
 export function AccountMenu({ navigate, signOut }: { navigate: (p: Page) => void; signOut: () => void }) {
   const [open, setOpen] = useState(false)
+  useOverlayBack(open, () => setOpen(false))
   const ref = useRef<HTMLDivElement>(null)
   let name = 'Student'
   try { name = JSON.parse(localStorage.getItem('shh_profile') || '{}').name || name } catch { /* use default */ }
@@ -21,7 +24,7 @@ export function AccountMenu({ navigate, signOut }: { navigate: (p: Page) => void
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
   }, [])
-  return <div className="account-wrap" ref={ref} onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}>
+  return <div className="account-wrap" ref={ref} onKeyDown={e => { if (keyboardShortcutsEnabled() && e.key === 'Escape') setOpen(false) }}>
     <button className="account-card" aria-expanded={open} aria-label={`Account for ${name}`} onClick={() => setOpen(!open)}>
       <span className="account-avatar">{name.slice(0, 1).toUpperCase()}</span><span className="account-copy"><strong>{name}</strong><small>Your study space</small></span><Icon name="chevron" size={16} />
     </button>
@@ -37,8 +40,8 @@ export default function Navigation({ page, navigate, signOut, open, setOpen }: {
   const home = page === 'dashboard'
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
-    {!home && <button className="sidebar-hint" aria-label="Reveal navigation" onFocus={() => setOpen(true)} onMouseEnter={() => setOpen(true)} onClick={() => setOpen(true)} />}
-    <aside className={`study-sidebar ${home || open ? 'revealed' : ''}`} onMouseEnter={() => setOpen(true)} onMouseLeave={e => { if (!e.currentTarget.contains(document.activeElement)) setOpen(false) }} onFocusCapture={() => setOpen(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false) }}>
+    {!home && <button className="sidebar-hint" aria-label="Reveal navigation" onFocus={() => setOpen(true)} onMouseEnter={() => { if (canHover()) setOpen(true) }} onClick={() => setOpen(true)} />}
+    <aside className={`study-sidebar ${home || open ? 'revealed' : ''}`} onMouseEnter={() => { if (canHover()) setOpen(true) }} onMouseLeave={e => { if (canHover() && !e.currentTarget.contains(document.activeElement)) setOpen(false) }} onFocusCapture={() => setOpen(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false) }}>
       <button className="sidebar-brand" onClick={() => navigate('dashboard')}>Shhhhh<span>Your quiet study space</span></button>
       <nav aria-label="Main navigation">{items.map((item, i) => <button key={item.page} data-tour={item.page} aria-current={page === item.page ? 'page' : undefined} className={`sidebar-item ${page === item.page ? 'active' : ''}`} style={{ animationDelay: `${i * 35}ms` }} onClick={() => { navigate(item.page); setOpen(false) }}><Icon name={item.icon} size={20} />{item.label}</button>)}</nav>
       <AccountMenu navigate={navigate} signOut={signOut} />

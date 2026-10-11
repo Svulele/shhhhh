@@ -1,3 +1,5 @@
+import { keyboardShortcutsEnabled } from '../useInputMode'
+import useOverlayBack from '../components/useOverlayBack'
 import { aiFetch, API_URL } from '../api'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { timerStore, setAlarmCallback } from '../timerStore'
@@ -10,20 +12,28 @@ import useModalFocus from '../components/useModalFocus'
 let _ctx: AudioContext | null = null
 let _nodes: AudioNode[] = []
 let _cur: string | null = null
+let audioGeneration = 0
+const alarmNodes = new Set<AudioNode>()
+function audioContext() {
+  if (!_ctx || _ctx.state === 'closed') _ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+  if (_ctx.state === 'suspended') void _ctx.resume()
+  return _ctx
+}
+function suspendIdleAudio() { if (!_nodes.length && !alarmNodes.size && _ctx?.state === 'running') void _ctx.suspend() }
 
 function stopAmbient() {
   _nodes.forEach(n => { try { (n as any).stop?.(); n.disconnect() } catch {} })
-  _nodes = []; _cur = null
+  _nodes = []; _cur = null; audioGeneration++; suspendIdleAudio()
 }
 
 async function playAmbient(type: string) {
   if (_cur === type) return
   stopAmbient(); _cur = type
   try {
-    if (!_ctx) _ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    else if (_ctx.state === 'suspended') await _ctx.resume()
-    else if (_ctx.state === 'closed')    _ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const ctx = _ctx
+    const generation = audioGeneration
+    const ctx = audioContext()
+    if (ctx.state === 'suspended') await ctx.resume()
+    if (generation !== audioGeneration) { suspendIdleAudio(); return }
     const buf = ctx.createBuffer(2, ctx.sampleRate * 4, ctx.sampleRate)
     for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1 }
     const S = () => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; return s }
@@ -53,13 +63,16 @@ async function playAmbient(type: string) {
 }
 
 // ── Alarm — 8 escalating rings ────────────────────────────────
-let _alarmCtx: AudioContext | null = null
+// Ambient and alarm share one context; sources disconnect after their final sample.
 
 export function playAlarm(type: 'bell' | 'chime' | 'beep') {
   try {
-    if (_alarmCtx) { try { _alarmCtx.close() } catch {} }
-    _alarmCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const ctx = _alarmCtx
+    stopAlarm()
+    const ctx = audioContext()
+    const track = (osc: OscillatorNode, gain: GainNode) => {
+      alarmNodes.add(osc); alarmNodes.add(gain)
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); alarmNodes.delete(osc); alarmNodes.delete(gain); suspendIdleAudio() }
+    }
     if (type === 'beep') {
       const freqs=[440,523,587,659,740,830,932,1047]
       const vols=[0.15,0.2,0.25,0.3,0.35,0.42,0.5,0.6]
@@ -72,7 +85,7 @@ export function playAlarm(type: 'bell' | 'chime' | 'beep') {
         g.gain.linearRampToValueAtTime(vols[i],ctx.currentTime+gaps[i]+0.01)
         g.gain.setValueAtTime(vols[i],ctx.currentTime+gaps[i]+0.18)
         g.gain.linearRampToValueAtTime(0,ctx.currentTime+gaps[i]+0.22)
-        osc.connect(g);g.connect(ctx.destination)
+        track(osc,g);osc.connect(g);g.connect(ctx.destination)
         osc.start(ctx.currentTime+gaps[i]);osc.stop(ctx.currentTime+gaps[i]+0.25)
       })
     } else if (type === 'chime') {
@@ -86,7 +99,7 @@ export function playAlarm(type: 'bell' | 'chime' | 'beep') {
         osc.frequency.exponentialRampToValueAtTime(f*1.4,ctx.currentTime+delay+0.4)
         g.gain.setValueAtTime(vols[i],ctx.currentTime+delay)
         g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+0.9)
-        osc.connect(g);g.connect(ctx.destination)
+        track(osc,g);osc.connect(g);g.connect(ctx.destination)
         osc.start(ctx.currentTime+delay);osc.stop(ctx.currentTime+delay+1)
       })
     } else {
@@ -100,7 +113,7 @@ export function playAlarm(type: 'bell' | 'chime' | 'beep') {
         osc.frequency.exponentialRampToValueAtTime(freqs[i]/2,ctx.currentTime+delay+1.6)
         g.gain.setValueAtTime(vols[i],ctx.currentTime+delay)
         g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+1.8)
-        osc.connect(g);g.connect(ctx.destination)
+        track(osc,g);osc.connect(g);g.connect(ctx.destination)
         osc.start(ctx.currentTime+delay);osc.stop(ctx.currentTime+delay+2)
       })
     }
@@ -108,7 +121,8 @@ export function playAlarm(type: 'bell' | 'chime' | 'beep') {
 }
 
 export function stopAlarm() {
-  try { _alarmCtx?.close(); _alarmCtx = null } catch {}
+  for (const node of alarmNodes) { try { (node as AudioScheduledSourceNode).stop?.(); node.disconnect() } catch {} }
+  alarmNodes.clear(); suspendIdleAudio()
 }
 
 // ── Hook: subscribe to global timer ──────────────────────────
@@ -129,7 +143,7 @@ function DoneOverlay({ mode, onDismiss }: { mode: TimerMode; onDismiss: () => vo
   const ref=useRef<HTMLDivElement>(null)
   useModalFocus(ref,true,onDismiss)
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (['Enter',' ','Escape'].includes(e.key)) onDismiss() }
+    const h = (e: KeyboardEvent) => { if (keyboardShortcutsEnabled() && ['Enter',' ','Escape'].includes(e.key)) onDismiss() }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [onDismiss])
@@ -149,7 +163,7 @@ function DoneOverlay({ mode, onDismiss }: { mode: TimerMode; onDismiss: () => vo
         <button onClick={onDismiss} style={{ padding:'11px 36px',borderRadius:999,background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',color:'white',fontSize:14,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 18px var(--accent-glow)',touchAction:'manipulation' }}>
           {isWork ? 'Start break' : 'Back to focus'}
         </button>
-        <div style={{ fontSize:11,color:'var(--text-3)',marginTop:10 }}>Tap anywhere · Enter</div>
+        <div style={{ fontSize:11,color:'var(--text-3)',marginTop:10 }}>Tap anywhere<span className="kbd-hint"> · Enter</span></div>
       </div>
     </div>
   )
@@ -159,6 +173,7 @@ function DoneOverlay({ mode, onDismiss }: { mode: TimerMode; onDismiss: () => vo
 function FocusMode({ sound, onSound, onExit }: {
   sound: string|null; onSound: (k:string|null)=>void; onExit: ()=>void
 }) {
+  useOverlayBack(true, onExit)
   const t = useTimerState()
   const { mm, ss, pct } = timerStore.fmt()
   const ref = useRef<HTMLDivElement>(null)
@@ -176,8 +191,8 @@ function FocusMode({ sound, onSound, onExit }: {
     element?.querySelector<HTMLButtonElement>('button[aria-label="Close full screen"]')?.focus()
     const change = () => { if (entered && !document.fullscreenElement) onExit() }
     const key = (e: KeyboardEvent) => {
-      if(e.key==='Escape'){e.preventDefault();onExit()}
-      if(e.key===' ' && !(e.target as HTMLElement).closest('button,input,select,textarea')){e.preventDefault();timerStore.toggle()}
+      if(keyboardShortcutsEnabled() && e.key==='Escape'){e.preventDefault();onExit()}
+      if(keyboardShortcutsEnabled() && e.key===' ' && !(e.target as HTMLElement).closest('button,input,select,textarea,[contenteditable]:not([contenteditable=false])')){e.preventDefault();timerStore.toggle()}
       if(e.key==='Tab') {
         const buttons = Array.from(element?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || [])
         const first=buttons[0],last=buttons[buttons.length-1]
@@ -205,7 +220,7 @@ function FocusMode({ sound, onSound, onExit }: {
   return createPortal(<div className="fullscreen-focus" ref={ref} role="dialog" aria-modal="true" aria-label="Full screen focus timer">
     <div className="fullscreen-top"><span>{t.sessions} <small>sessions</small></span><div className="mode-segment">{(['work','break'] as TimerMode[]).map(m=><button key={m} aria-pressed={t.mode===m} onClick={()=>timerStore.switchMode(m)}>{m==='work'?'Focus':'Break'}</button>)}</div><button className="round-button" aria-label="Close full screen" onClick={onExit}><Icon name="close" /></button></div>
     <div className="fullscreen-clock"><div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`}>{mm}:{ss}</div><div className="fullscreen-progress" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${pct}%`}} /></div><p>{t.mode==='work'?'Nothing else needs your attention right now.':'Breathe. Let your mind wander.'}</p></div>
-    <div className="fullscreen-bottom"><div className="fullscreen-dock"><button className="round-button primary" aria-label={t.running?'Pause session':'Start session'} onClick={timerStore.toggle}><Icon name={t.running?'pause':'play'} size={26} /></button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><Icon name="reset" /></button><span className="dock-divider" />{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="round-button" key={k} title={n} aria-label={n} aria-pressed={sound===k} onClick={()=>onSound(k)}><Icon name={k} /></button>)}<button className="round-button" aria-label="Mute ambient sound" aria-pressed={!sound} onClick={()=>onSound(null)}><Icon name="mute" /></button></div><div className="alarm-row"><span className="eyebrow">Alarm</span>{(['bell','chime','beep'] as const).map(type=><button className="ui-button" key={type} aria-pressed={t.alarmType===type} onClick={()=>preview(type)}>{type[0].toUpperCase()+type.slice(1)}</button>)}</div><small className="fullscreen-help">Space to start or pause · Esc to return</small></div>
+    <div className="fullscreen-bottom"><div className="fullscreen-dock"><button className="round-button primary" aria-label={t.running?'Pause session':'Start session'} onClick={timerStore.toggle}><Icon name={t.running?'pause':'play'} size={26} /></button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><Icon name="reset" /></button><span className="dock-divider" />{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="round-button" key={k} title={n} aria-label={n} aria-pressed={sound===k} onClick={()=>onSound(k)}><Icon name={k} /></button>)}<button className="round-button" aria-label="Mute ambient sound" aria-pressed={!sound} onClick={()=>onSound(null)}><Icon name="mute" /></button></div><div className="alarm-row"><span className="eyebrow">Alarm</span>{(['bell','chime','beep'] as const).map(type=><button className="ui-button" key={type} aria-pressed={t.alarmType===type} onClick={()=>preview(type)}>{type[0].toUpperCase()+type.slice(1)}</button>)}</div><small className="fullscreen-help kbd-hint">Space to start or pause · Esc to return</small></div>
   </div>,document.body)
 }
 
@@ -222,9 +237,21 @@ export function TimerAlarm() {
   return done ? createPortal(<DoneOverlay mode={done} onDismiss={dismiss} />, host) : null
 }
 
-export default function Pomodoro() {
+function FocusClock() {
   const t = useTimerState()
   const { mm, ss, pct } = timerStore.fmt()
+  const circ = 2 * Math.PI * 134
+  return (<div className={`focus-ring ${t.running?'running':''}`}>
+            <svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="focus-gradient"><stop stopColor="#7c6cff"/><stop offset="1" stopColor="#c79bff"/></linearGradient></defs><circle cx="150" cy="150" r="134" fill="none" stroke="var(--soft)" strokeWidth="9"/><circle cx="150" cy="150" r="134" fill="none" stroke="url(#focus-gradient)" strokeWidth="9" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)} /></svg>
+            <div><span className="focus-time" role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`}>{mm}:{ss}</span><span className="focus-mode-label">{t.mode==='work'?'Stay in your flow':'Take a breath'}</span></div>
+          </div>)
+}
+
+export default function Pomodoro() {
+  const [t, setTimerConfig] = useState(timerStore.get)
+  useEffect(() => timerStore.subscribe(next => setTimerConfig(previous =>
+    previous.mode === next.mode && previous.running === next.running && previous.sessions === next.sessions && previous.workMins === next.workMins && previous.brkMins === next.brkMins && previous.alarmType === next.alarmType ? previous : next
+  )), [])
   const [sound,      setSound]      = useState<string|null>(()=>_cur)
   const [showCustom, setShowCustom] = useState(false)
   const [customWork, setCustomWork] = useState(t.workMins)
@@ -266,7 +293,6 @@ export default function Pomodoro() {
     window.addEventListener('keydown',handle)
     return () => window.removeEventListener('keydown',handle)
   }, [])
-  const circ = 2 * Math.PI * 134
   return <>
       {fullscreen && <FocusMode sound={sound} onSound={handleSound} onExit={exitFullscreen}/>}
       <div className="page-scroll"><section className="focus-page">
@@ -279,9 +305,9 @@ export default function Pomodoro() {
           <div style={{ background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,padding:'14px 16px',marginBottom:10 }}>
             <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
               <div style={{ fontSize:9,letterSpacing:'2.5px',textTransform:'uppercase',color:'var(--text-3)' }}>Custom timer</div>
-              <div style={{ display:'flex',gap:6 }}>
+              <div style={{ display:'flex',gap:8 }}>
                 <button aria-expanded={showCustom} aria-controls="custom-timer-fields" onClick={()=>setShowCustom(s=>!s)} style={{ padding:'4px 11px',borderRadius:999,fontSize:11,cursor:'pointer',fontFamily:'var(--font-body)',background:'var(--bg-pill)',border:'0.5px solid var(--border)',color:'var(--text-2)',touchAction:'manipulation' }}>{showCustom?'Hide settings':'Set time'}</button>
-                <button aria-label="Suggest timer durations with AI" onClick={askAI} disabled={aiLoading} style={{ display:'flex',alignItems:'center',gap:4,padding:'4px 11px',borderRadius:999,fontSize:11,cursor:aiLoading?'default':'pointer',fontFamily:'var(--font-body)',background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',opacity:aiLoading?.6:1,touchAction:'manipulation' }}>
+                <button aria-label="Suggest timer durations with AI" onClick={askAI} disabled={aiLoading} style={{ display:'flex',alignItems:'center',gap:8,padding:'4px 11px',borderRadius:999,fontSize:11,cursor:aiLoading?'default':'pointer',fontFamily:'var(--font-body)',background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',opacity:aiLoading?.6:1,touchAction:'manipulation' }}>
                   <Icon name="ask" size={9} />
                   {aiLoading?'Thinking…':'Suggest with AI'}
                 </button>
@@ -290,11 +316,11 @@ export default function Pomodoro() {
             {aiTip&&<div style={{ fontSize:12,color:'var(--text-2)',marginTop:10,lineHeight:1.5,fontStyle:'italic' }}>"{aiTip}"</div>}
             {showCustom&&(
               <div id="custom-timer-fields" style={{ display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:12 }}>
-                <label style={{ display:'flex',alignItems:'center',gap:7,fontSize:13,color:'var(--text-2)' }}>
-                  Focus <input type="number" min={1} max={120} value={customWork} onChange={e=>setCustomWork(Number(e.target.value))} style={{ width:50,padding:'5px 7px',fontSize:13,textAlign:'center' }}/> m
+                <label style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--text-2)' }}>
+                  Focus <input type="number" inputMode="numeric" enterKeyHint="done" min={1} max={120} value={customWork} onChange={e=>setCustomWork(Number(e.target.value))} style={{ width:50,padding:'5px 7px',fontSize:13,textAlign:'center' }}/> m
                 </label>
-                <label style={{ display:'flex',alignItems:'center',gap:7,fontSize:13,color:'var(--text-2)' }}>
-                  Break <input type="number" min={1} max={60} value={customBrk} onChange={e=>setCustomBrk(Number(e.target.value))} style={{ width:44,padding:'5px 7px',fontSize:13,textAlign:'center' }}/> m
+                <label style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--text-2)' }}>
+                  Break <input type="number" inputMode="numeric" enterKeyHint="done" min={1} max={60} value={customBrk} onChange={e=>setCustomBrk(Number(e.target.value))} style={{ width:44,padding:'5px 7px',fontSize:13,textAlign:'center' }}/> m
                 </label>
                 <button onClick={applyCustom} style={{ padding:'6px 15px',borderRadius:999,background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',touchAction:'manipulation' }}>Apply</button>
               </div>
@@ -303,10 +329,7 @@ export default function Pomodoro() {
 
         </aside>
           </div>
-          <div className={`focus-ring ${t.running?'running':''}`}>
-            <svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="focus-gradient"><stop stopColor="#7c6cff"/><stop offset="1" stopColor="#c79bff"/></linearGradient></defs><circle cx="150" cy="150" r="134" fill="none" stroke="var(--soft)" strokeWidth="9"/><circle cx="150" cy="150" r="134" fill="none" stroke="url(#focus-gradient)" strokeWidth="9" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)} /></svg>
-            <div><span className="focus-time" role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`}>{mm}:{ss}</span><span className="focus-mode-label">{t.mode==='work'?'Stay in your flow':'Take a breath'}</span></div>
-          </div>
+          <FocusClock />
           <div className="focus-controls"><button className="ui-button primary" onClick={timerStore.toggle}>{t.running?<PauseIcon />:<PlayIcon />}{t.running?'Pause':'Start'} session</button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><ResetIcon /></button></div>
           <p className="focus-session-count">{t.sessions} focus session{t.sessions===1?'':'s'} completed</p>
           <div className="ambient-row">{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="ui-button" key={k} aria-pressed={sound===k} onClick={()=>handleSound(k)}><Icon name={k} size={18} />{n}</button>)}<button className="round-button" aria-label="Mute ambient sound" onClick={()=>handleSound(null)}><Icon name="mute" size={18} /></button></div>

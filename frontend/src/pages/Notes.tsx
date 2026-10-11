@@ -1,5 +1,6 @@
+import WindowItem from '../components/WindowItem'
 import Icon from '../components/Icon'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useDeferredValue } from 'react'
 import { deleteExamMark, EXAM_TAGS, loadExamMarks, type ExamMark, type ExamMarkTag } from '../examMarks'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export default function Notes() {
   const books                   = loadBooks()
   const [view,     setView]     = useState<'notes' | 'exam'>('notes')
   const [search,   setSearch]   = useState('')
+  const deferredSearch = useDeferredValue(search)
   const [selBook,  setSelBook]  = useState<string>('all')
   const [selTag,   setSelTag]   = useState<'all' | ExamMarkTag>('all')
   const [sort,     setSort]     = useState<'newest' | 'oldest' | 'page'>('newest')
@@ -66,8 +68,8 @@ export default function Notes() {
 
   const filtered = useMemo(() => {
     let list = selBook === 'all' ? notes : notes.filter(n => n.bookId === selBook)
-    if (search.trim()) {
-      const q = search.toLowerCase()
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase()
       list = list.filter(n => n.text.toLowerCase().includes(q))
     }
     return [...list].sort((a, b) => {
@@ -75,13 +77,13 @@ export default function Notes() {
       if (sort === 'oldest') return a.createdAt - b.createdAt
       return a.page - b.page
     })
-  }, [notes, selBook, search, sort])
+  }, [notes, selBook, deferredSearch, sort])
 
   const filteredMarks = useMemo(() => {
     let list = selBook === 'all' ? marks : marks.filter(mark => mark.bookId === selBook)
     if (selTag !== 'all') list = list.filter(mark => mark.tag === selTag)
-    if (search.trim()) {
-      const q = search.toLowerCase()
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase()
       list = list.filter(mark => mark.text.toLowerCase().includes(q) || EXAM_TAGS[mark.tag].label.toLowerCase().includes(q))
     }
     return [...list].sort((a, b) => {
@@ -89,7 +91,7 @@ export default function Notes() {
       if (sort === 'oldest') return a.createdAt - b.createdAt
       return a.page - b.page
     })
-  }, [marks, selBook, selTag, search, sort])
+  }, [marks, selBook, selTag, deferredSearch, sort])
 
   const deleteNote = (id: string) => {
     const updated = notes.filter(n => n.id !== id)
@@ -125,14 +127,14 @@ export default function Notes() {
           </div>
           {(view === 'notes' ? notes.length > 0 : marks.length > 0) && (
             <button onClick={() => view === 'notes' ? exportAsText(filtered, books) : exportExamMarks(filteredMarks, books)}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s', touchAction:'manipulation' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s', touchAction:'manipulation' }}>
               <Icon name="download" size={13} />
               Export
             </button>
           )}
         </div>
 
-        <div style={{display:'flex',gap:6,marginBottom:14}}>
+        <div style={{display:'flex',gap:8,marginBottom:14}}>
           {[
             { id:'notes', label:`Notes (${notes.length})` },
             { id:'exam', label:`Exam marks (${marks.length})` },
@@ -182,7 +184,7 @@ export default function Notes() {
             </div>
 
             {/* Filters row */}
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20, alignItems:'center' }}>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20, alignItems:'center' }}>
               {/* Book filter */}
               <button onClick={() => setSelBook('all')} style={{ padding:'5px 13px', borderRadius:999, fontSize:12, cursor:'pointer', border:'0.5px solid var(--border)', fontFamily:'var(--font-body)', background:selBook==='all'?'var(--bg-pill)':'transparent', color:selBook==='all'?'var(--text-1)':'var(--text-3)', transition:'all .18s', touchAction:'manipulation' }}>
                 All books
@@ -230,9 +232,9 @@ export default function Notes() {
                 const book = getBook(note.bookId)
                 const isEditing = editing === note.id
                 return (
-                  <div key={note.id} style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, padding:'16px 18px', transition:'border-color .2s' }}>
+                  <WindowItem key={note.id} enabled={filtered.length > 40 && !isEditing} style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, padding:'16px 18px', transition:'border-color .2s' }}>
                     {/* Top meta row */}
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                    <div className="note-meta" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
                         <span style={{ fontSize:10, fontWeight:500, color:'var(--accent)', background:'var(--accent-soft)', padding:'2px 8px', borderRadius:999, whiteSpace:'nowrap' }}>
                           p.{note.page}
@@ -243,20 +245,20 @@ export default function Notes() {
                           </span>
                         )}
                       </div>
-                      <div style={{ display:'flex', alignItems:'center', gap:2, flexShrink:0, marginLeft:8 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:8 }}>
                         <span style={{ fontSize:10, color:'var(--text-3)', marginRight:6 }}>{fmt(note.createdAt)}</span>
                         {/* Edit button */}
-                        <button aria-label="Edit note" onClick={() => { setEditing(note.id); setEditText(note.text) }}
+                        <button className="capability-hover-3"  aria-label="Edit note" onClick={() => { setEditing(note.id); setEditText(note.text) }}
                           style={{ width:28, height:28, borderRadius:8, border:'none', background:'transparent', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .18s', touchAction:'manipulation' }}
-                          onMouseEnter={e => { e.currentTarget.style.background='var(--bg-pill)'; e.currentTarget.style.color='var(--text-1)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-3)' }}>
+
+                          >
                           <Icon name="edit" size={12} />
                         </button>
                         {/* Delete button */}
-                        <button aria-label="Delete note" onClick={() => deleteNote(note.id)}
+                        <button className="capability-hover-4"  aria-label="Delete note" onClick={() => deleteNote(note.id)}
                           style={{ width:28, height:28, borderRadius:8, border:'none', background:'transparent', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .18s', touchAction:'manipulation' }}
-                          onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,.1)'; e.currentTarget.style.color='#f87171' }}
-                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-3)' }}>
+
+                          >
                           <Icon name="trash" size={12} />
                         </button>
                       </div>
@@ -269,7 +271,7 @@ export default function Notes() {
                           onKeyDown={e => { if (e.key==='Enter'&&(e.metaKey||e.ctrlKey)) saveEdit(note.id) }}
                           style={{ fontSize:14, fontWeight:300, lineHeight:1.65, resize:'none', minHeight:80, borderRadius:10 }}
                           autoFocus/>
-                        <div style={{ display:'flex', gap:7 }}>
+                        <div style={{ display:'flex', gap:8 }}>
                           <button onClick={() => setEditing(null)} style={{ flex:1, padding:'7px', borderRadius:8, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', touchAction:'manipulation' }}>Cancel</button>
                           <button onClick={() => saveEdit(note.id)} style={{ flex:1, padding:'7px', borderRadius:8, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', color:'var(--accent)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', touchAction:'manipulation' }}>Save</button>
                         </div>
@@ -279,7 +281,7 @@ export default function Notes() {
                         {note.text}
                       </div>
                     )}
-                  </div>
+                  </WindowItem>
                 )
               })}
             </div> : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>

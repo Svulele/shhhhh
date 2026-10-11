@@ -1,9 +1,15 @@
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { plural } from '../plural'
+import WindowItem from '../components/WindowItem'
+import useModalFocus from '../components/useModalFocus'
+import useOverlayBack from '../components/useOverlayBack'
+import '../components/reader/pdfCompatibility'
+import pdfWorkerUrl from '../components/reader/pdf.worker.ts?worker&url'
+import type { PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type {DocumentBundle,PdfSource} from '../components/reader/types'
-import ReaderExperience from '../components/reader/ReaderExperience'
+const ReaderExperience = lazy(() => import('../components/reader/ReaderExperience'))
 import { SessionComplete } from '../components/reader/ReaderPanels'
 import Icon from '../components/Icon'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useUser, type Page } from '../App'
 import { addStudySeconds, recordReadingSession } from '../studyHistory'
 import { validateRange, type ReadingContext, type SourcePage } from '../readingContext'
@@ -63,59 +69,90 @@ async function deletePdf(id: string) {
 
 // ── pdf.js loader ─────────────────────────────────────────────
 const pdfOptions = {cMapUrl:'/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/pdfjs/standard_fonts/',wasmUrl:'/pdfjs/wasm/',enableXfa:false}
-let _pdfjs: Promise<typeof import('pdfjs-dist')> | null = null
+let _pdfjs: Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')> | null = null
 function ensurePdfjs() {
-  if (!_pdfjs) _pdfjs = import('pdfjs-dist').then(lib => {
+  if (!_pdfjs) _pdfjs = import('pdfjs-dist/legacy/build/pdf.mjs').then(lib => {
     lib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
     return lib
   }).catch(error => { _pdfjs = null; throw error })
   return _pdfjs
 }
 
+// Each loading task owns a classic worker, including Safari without module workers.
+const documentOwners = new WeakMap<PDFDocumentProxy, () => Promise<void>>()
+async function parsePdf(data: ArrayBuffer) {
+  const lib = await ensurePdfjs(), port = new Worker(pdfWorkerUrl, import.meta.env.DEV ? {type:'module'} : undefined)
+  const worker = lib.PDFWorker.create({port})
+  const task = lib.getDocument({...pdfOptions,data,worker})
+  const destroy = async () => { try { await task.destroy() } finally { worker.destroy(); port.terminate() } }
+  try { const doc = await task.promise; documentOwners.set(doc,destroy); return doc }
+  catch(error) { await destroy(); throw error }
+}
+function destroyPdf(doc: PDFDocumentProxy) {
+  const destroy = documentOwners.get(doc)
+  documentOwners.delete(doc)
+  return destroy ? destroy() : doc.loadingTask.destroy()
+}
+
 // ── Module-level PDF document cache ──────────────────────────
 // Keyed by book ID so document never reloads on page turn
 const _docCache = new Map<string, any>()
 let lastSource: { key: string; pages: SourcePage[] } | null = null
-window.addEventListener('shh:clear-device-data',()=>{
-  for(const doc of _docCache.values())void doc.destroy()
-  _docCache.clear();lastSource=null
-})
+window.addEventListener('shh:clear-device-data', () => { sourceEpoch++; extractionPending.clear(); releaseReaderDocuments() })
 function cacheDocument(id: string, document: any) {
   _docCache.set(id,document)
   if(_docCache.size>3){
     const oldest=_docCache.keys().next().value!
     const evicted=_docCache.get(oldest)
     _docCache.delete(oldest)
-    void evicted?.destroy()
+    if(evicted) void destroyPdf(evicted)
   }
 }
 
+let sourceEpoch = 0
+const extractionPending = new Map<string, Promise<SourcePage[]>>()
+let extractionQueue: Promise<void> = Promise.resolve()
 export async function extractReadingPages(context: ReadingContext): Promise<SourcePage[]> {
+  validateRange(context.fromPage, context.toPage, context.totalPages)
+  const key = `${context.bookId}:${context.fromPage}:${context.toPage}`
+  if(lastSource?.key === key) return lastSource.pages
+  const existing = extractionPending.get(key)
+  if(existing) return existing
+  // Preview and Send may ask for the same selection. Share work and cap peak workers.
+  const epoch = sourceEpoch
+  const request = extractionQueue.then(() => { if(epoch!==sourceEpoch)throw new Error('Selection cleared'); return readReadingPages(context,epoch) })
+  extractionQueue = request.then(() => undefined, () => undefined)
+  extractionPending.set(key,request)
+  try { return await request } finally { if(extractionPending.get(key)===request)extractionPending.delete(key) }
+}
+async function readReadingPages(context: ReadingContext, epoch: number): Promise<SourcePage[]> {
   validateRange(context.fromPage, context.toPage, context.totalPages)
   const sourceKey=`${context.bookId}:${context.fromPage}:${context.toPage}`
   if(lastSource?.key===sourceKey)return lastSource.pages
-  let doc = _docCache.get(context.bookId)
+  // Extraction owns a short-lived document; never retain it between screens.
+  let doc: PDFDocumentProxy | undefined
   if (!doc) {
     const buffer = await loadPdf(context.bookId)
     if (!buffer) throw new Error('The PDF is not available on this device. Open or re-upload it in your library.')
-    const lib = await ensurePdfjs()
-    doc = await lib.getDocument({...pdfOptions,data: buffer}).promise
-    cacheDocument(context.bookId, doc)
+    doc = await parsePdf(buffer)
   }
+  try {
   validateRange(context.fromPage, context.toPage, doc.numPages)
   const pages: SourcePage[] = []
   let count = 0
   for (let n = context.fromPage; n <= context.toPage; n++) {
     const page = await doc.getPage(n)
     const content = await page.getTextContent()
-    const text = content.items.map((item: { str?: string; hasEOL?: boolean }) => (item.str ?? '') + (item.hasEOL ? '\n' : ' ')).join('').trim()
+    const text = content.items.map(item => ('str' in item ? item.str : '') + ('hasEOL' in item && item.hasEOL ? '\n' : ' ')).join('').trim()
     count += text.length
     if (count > 32000) throw new Error('This selection has too much text. Choose a smaller page range.')
-    pages.push({ page: n, text })
+    pages.push({ page: n, text }); page.cleanup()
   }
   if (!pages.some(p => p.text.trim())) throw new Error('These pages contain no readable text. Scan-only pages need OCR, or paste their text into chat.')
+  if(epoch!==sourceEpoch)throw new Error('Selection cleared')
   lastSource={key:sourceKey,pages}
   return pages
+  } finally { await destroyPdf(doc) }
 }
 
 type ReaderTextItem = {str?:string;transform?:number[]}
@@ -125,13 +162,21 @@ type ReaderSource = Omit<PdfSource,'getTextContent'> & {
 }
 type ReaderBundle = {doc:{numPages:number;getPage:(page:number)=>Promise<ReaderSource>};lib:DocumentBundle['lib'] & {OPS:{paintImageXObject:number}}}
 const readerPending = new Map<string, Promise<ReaderBundle>>()
+let readerGeneration = 0
+function releaseReaderDocuments() {
+  readerGeneration++
+  for (const doc of _docCache.values()) void destroyPdf(doc).catch(() => {})
+  _docCache.clear(); readerPending.clear(); lastSource = null
+}
 async function readerDocument(bookId: string, buf: ArrayBuffer) {
   const pending=readerPending.get(bookId)
   if(pending)return pending
+  const generation = readerGeneration
   const request:Promise<ReaderBundle>=(async()=>{
     const lib=await ensurePdfjs()
     if(!_docCache.has(bookId)){
-      const doc=await lib.getDocument({...pdfOptions,data:buf.slice(0)}).promise
+      const doc=await parsePdf(buf.slice(0))
+      if (generation !== readerGeneration) { await destroyPdf(doc); throw new Error('Reader closed') }
       cacheDocument(bookId,doc)
     }
     return {doc:_docCache.get(bookId),lib:{OPS:lib.OPS,renderTextLayer(options) {
@@ -140,7 +185,7 @@ async function readerDocument(bookId: string, buf: ArrayBuffer) {
     }}}
   })()
   readerPending.set(bookId,request)
-  try{return await request}finally{readerPending.delete(bookId)}
+  try{return await request}finally{if(readerPending.get(bookId)===request)readerPending.delete(bookId)}
 }
 async function readerText(bookId:string, buf:ArrayBuffer, pageNum:number) {
   const {doc,lib}=await readerDocument(bookId,buf)
@@ -178,6 +223,7 @@ async function readerText(bookId:string, buf:ArrayBuffer, pageNum:number) {
         }
         if (buf2.trim()) result.push({text:buf2.trim(),heading:false})
 
+  pg.cleanup?.()
   return { blocks:result, hasImages, totalPages:doc.numPages }
 }
 
@@ -200,13 +246,15 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
 }) {
   const pct  = book.totalPages > 0 ? Math.round(book.currentPage/book.totalPages*100) : 0
   const done = pct >= 100
-  const [hov,  setHov]    = useState(false)
   const [menu, setMenu]   = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [editTitle,  setEditTitle]  = useState(book.title)
   const [editAuthor, setEditAuthor] = useState(book.author)
   const [editGoal,   setEditGoal]   = useState(book.goalDate ?? '')
   const menuRef = useRef<HTMLDivElement>(null)
+  const renameRef = useRef<HTMLDivElement>(null)
+  useOverlayBack(menu, () => setMenu(false))
+  useModalFocus(renameRef, renaming, () => setRenaming(false))
 
   // Pages per day calculation
   const pagesLeft    = book.totalPages - book.currentPage
@@ -229,8 +277,8 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
     <>
       {/* Rename / goal modal */}
       {renaming && (
-        <div onClick={()=>setRenaming(false)} style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(12px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:22,padding:'28px 28px 24px',width:'100%',maxWidth:380,boxShadow:'0 24px 64px rgba(0,0,0,.3)',animation:'scaleIn .2s var(--spring) both'}}>
+        <div className="book-overlay" onClick={()=>setRenaming(false)} style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(12px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div ref={renameRef} role="dialog" aria-modal="true" aria-label="Edit book details" className="book-dialog" onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:22,padding:'28px 28px 24px',width:'100%',maxWidth:380,boxShadow:'0 24px 64px rgba(0,0,0,.3)',animation:'scaleIn .2s var(--spring) both'}}>
             <div style={{fontSize:16,fontWeight:500,color:'var(--text-1)',marginBottom:18}}>Edit book details</div>
             <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:20}}>
               <div>
@@ -253,13 +301,13 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
                     {(() => {
                       const d = Math.max(1, Math.ceil((new Date(editGoal).getTime()-Date.now())/86400000))
                       const p = Math.ceil((book.totalPages-book.currentPage)/d)
-                      return `~${p} page${p!==1?'s':''}/day to finish in ${d} day${d!==1?'s':''}`
+                      return `~${plural(p, 'page')}/day to finish in ${plural(d, 'day')}`
                     })()}
                   </div>
                 )}
               </div>
             </div>
-            <div style={{display:'flex',gap:8}}>
+            <div className="book-dialog-actions" style={{display:'flex',gap:8}}>
               <button onClick={()=>setRenaming(false)} style={{flex:1,padding:'10px',borderRadius:10,border:'0.5px solid var(--border)',background:'transparent',color:'var(--text-2)',fontSize:13,cursor:'pointer',fontFamily:'var(--font-body)'}}>Cancel</button>
               <button onClick={saveRename} style={{flex:1,padding:'10px',borderRadius:10,background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',color:'white',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 14px var(--accent-glow)'}}>Save</button>
             </div>
@@ -267,8 +315,8 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
         </div>
       )}
 
-      <div style={{position:'relative'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
-        <button onClick={onClick} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,overflow:'hidden',cursor:'pointer',textAlign:'left',width:'100%',transition:'all .22s',transform:hov?'translateY(-3px)':'none',boxShadow:hov?'0 10px 32px rgba(0,0,0,.1)':'none'}}>
+      <div className="library-book-hover" style={{position:'relative'}}>
+        <button onClick={onClick} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,overflow:'hidden',cursor:'pointer',textAlign:'left',width:'100%',transition:'all .22s',transform:'none',boxShadow:'none'}}>
           <div style={{height:110,background:book.coverGradient,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
             <Icon name="library" size={26} />
             <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.25)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'rgba(255,255,255,.9)',fontWeight:500}}>{pct}%</span>
@@ -279,7 +327,7 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
             <div style={{fontSize:11,color:'var(--text-3)',marginBottom:6,fontWeight:300,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.author}</div>
             {/* Goal badge */}
             {pagesPerDay && !done && (
-              <div style={{fontSize:10,color:goalOverdue?'#f87171':'var(--accent)',marginBottom:6,display:'flex',alignItems:'center',gap:4}}>
+              <div style={{fontSize:10,color:goalOverdue?'#f87171':'var(--accent)',marginBottom:6,display:'flex',alignItems:'center',gap:8}}>
                 <Icon name="plan" size={10} />
                 {goalOverdue ? 'Goal overdue!' : `${pagesPerDay} pg/day`}
               </div>
@@ -292,18 +340,18 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
 
         {/* Three-dot menu */}
         <div ref={menuRef} style={{position:'absolute',top:8,right:8,zIndex:10}}>
-          <button className="book-actions" aria-label={`Actions for ${book.title}`} aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:26,height:26,borderRadius:'50%',background:menu?'rgba(0,0,0,.45)':hov?'rgba(0,0,0,.3)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:hov||menu?1:0,transition:'all .18s',color:'white'}}>
+          <button className="book-actions" aria-label={`Actions for ${book.title}`} aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:26,height:26,borderRadius:'50%',background:menu?'rgba(0,0,0,.45)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:menu?1:0,transition:'all .18s',color:'white'}}>
             <Icon name="more" size={13} />
           </button>
           {menu && (
             <div style={{position:'absolute',top:30,right:0,background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:12,padding:'4px',minWidth:140,boxShadow:'0 8px 24px rgba(0,0,0,.2)',backdropFilter:'blur(16px)',zIndex:20}}>
-              <button onClick={e=>{e.stopPropagation();setMenu(false);onClick()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+              <button className="capability-hover-5"  onClick={e=>{e.stopPropagation();setMenu(false);onClick()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}}  >
                 <Icon name="eye" size={13} />Open
               </button>
-              <button onClick={e=>{e.stopPropagation();setMenu(false);setEditTitle(book.title);setEditAuthor(book.author);setEditGoal(book.goalDate??'');setRenaming(true)}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-pill)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+              <button className="capability-hover-6"  onClick={e=>{e.stopPropagation();setMenu(false);setEditTitle(book.title);setEditAuthor(book.author);setEditGoal(book.goalDate??'');setRenaming(true)}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'var(--text-1)',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}}  >
                 <Icon name="edit" size={13} />Rename & goal
               </button>
-              <button onClick={e=>{e.stopPropagation();setMenu(false);onDelete()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'#f87171',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(239,68,68,.08)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+              <button className="capability-hover-7"  onClick={e=>{e.stopPropagation();setMenu(false);onDelete()}} style={{width:'100%',padding:'9px 14px',borderRadius:8,background:'transparent',border:'none',textAlign:'left',fontSize:13,color:'#f87171',cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',gap:8}}  >
                 <Icon name="trash" size={13} />Delete
               </button>
             </div>
@@ -349,6 +397,8 @@ export default function Library({
     if(ttl>0) toastRef.current=setTimeout(()=>setToast(null),ttl)
   }, [])
 
+  useEffect(() => () => { if(toastRef.current) clearTimeout(toastRef.current); releaseReaderDocuments() }, [])
+  useEffect(() => { if(view !== 'reader') releaseReaderDocuments() }, [view])
   const restoredReader = useRef(sessionStorage.getItem('shh_open_reader'))
   useEffect(()=>{ saveBooks(books) },[books])
   useEffect(() => {
@@ -380,15 +430,14 @@ export default function Library({
     try {
       const buf = await file.arrayBuffer()
       if (new TextDecoder().decode(buf.slice(0, 5)) !== '%PDF-') throw new Error('Invalid PDF signature')
-      const lib = await ensurePdfjs()
-      const pdf = await lib.getDocument({...pdfOptions,data:buf.slice(0)}).promise
+      const pdf = await parsePdf(buf.slice(0))
       const numPages: number = pdf.numPages
       const raw = file.name.replace(/\.pdf$/i,'').replace(/_/g,' ')
       const parts = raw.split(/\s*[-–]\s*/)
       const title = parts[0]?.trim()||raw; const author = parts[1]?.trim()||'Unknown author'
       const id = Date.now().toString()
       const book: Book = {id,title,author,totalPages:numPages,currentPage:1,coverGradient:GRADIENTS[Math.floor(Math.random()*GRADIENTS.length)],addedAt:Date.now()}
-      cacheDocument(id,pdf)
+      await destroyPdf(pdf)
       await savePdf(id,buf)
       setPdfIds(ids=>new Set([...ids,id]))
       setBooks(prev=>[...prev,book])
@@ -453,7 +502,7 @@ export default function Library({
       recordReadingSession(activeBook, sessionRange.current.min, sessionRange.current.max, secs)
       ;(window as any).__shh_readSessionLogged = sessionId
     }
-    setView('shelf')
+    setActiveBuf(null); setView('shelf')
   }
 
   const finishSession = (headings:string[]) => {
@@ -469,7 +518,7 @@ export default function Library({
     }
     const fromPage=sessionRange.current.min,toPage=sessionRange.current.max
     const r:RecapData={bookId:activeBook.id,fromPage,toPage,summary:headings.length?headings:[fromPage===toPage?`Page ${fromPage}`:`Pages ${fromPage}–${toPage}`],questions:['Summarise these pages','Quiz me','Explain it simply']}
-    setRecap(r);setView('recap')
+    setActiveBuf(null); setRecap(r);setView('recap')
     if(typeof (window as any).__shh_generateCards==='function')void (window as any).__shh_generateCards({...activeBook,totalPages,currentPage},fromPage,toPage)
 
   }
@@ -481,7 +530,7 @@ export default function Library({
     if(lastSource?.key.startsWith(id+':'))lastSource=null
     const cached = _docCache.get(id)
     _docCache.delete(id)
-    void cached?.destroy()
+    if(cached) void destroyPdf(cached)
     try { if (JSON.parse(localStorage.getItem('shh_reading_ctx') ?? 'null')?.bookId === id) localStorage.removeItem('shh_reading_ctx') } catch {}
     await deletePdf(id)
     if(activeBook?.id===id){setView('shelf');setActiveBook(null);setActiveBuf(null)}
@@ -531,7 +580,7 @@ export default function Library({
             </div>
           )}
 
-          <div style={{display:'flex',gap:6,marginBottom:22}}>
+          <div style={{display:'flex',gap:8,marginBottom:22}}>
             <button style={tabStyle(filter==='all')} onClick={()=>setFilter('all')}>All</button>
             <button style={tabStyle(filter==='progress')} onClick={()=>setFilter('progress')}>In progress</button>
             <button style={tabStyle(filter==='finished')} onClick={()=>setFilter('finished')}>Finished</button>
@@ -548,21 +597,21 @@ export default function Library({
           {filtered.length===0&&<p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',padding:'40px 0'}}>{filter==='all'?'No books yet — add one above.':'Nothing here yet.'}</p>}
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:14}}>
             {filtered.map(book=>(
-              <div key={book.id}>
+              <WindowItem key={book.id} enabled={filtered.length > 40}>
                 <BookCard book={book} hasPdf={pdfIds.has(book.id)} onClick={()=>openBook(book)} onDelete={()=>deleteBook(book.id)} onRename={(t,a,g)=>renameBook(book.id,t,a,g)}/>
-              </div>
+              </WindowItem>
             ))}
           </div>
         </div>
       </div>
 
-      {view==='reader' && activeBook && activeBuf && <ReaderExperience
+      {view==='reader' && activeBook && activeBuf && <Suspense fallback={<p role="status">Opening reader…</p>}><ReaderExperience
         key={activeBook.id} book={activeBook} buffer={activeBuf} currentPage={currentPage} totalPages={totalPages}
         settingsKey={`shh_reader_settings:${user?.id || 'local'}`} loadDocument={readerDocument} loadText={readerText}
         onPage={updatePage} onClose={closeReader} onDone={finishSession}
         onTotal={n=>{setTotalPages(n);setBooks(prev=>prev.some(b=>b.id===activeBook.id&&b.totalPages!==n)?prev.map(b=>b.id===activeBook.id?{...b,totalPages:n}:b):prev)}}
         onAsk={(text,fromPage,toPage)=>{closeReader();localStorage.setItem('shh_reading_ctx',JSON.stringify({bookId:activeBook.id,title:activeBook.title,author:activeBook.author,currentPage:fromPage,totalPages,fromPage,toPage}));setMaterial({book:{...activeBook,currentPage:fromPage,totalPages},recap:{fromPage,toPage,questions:[]},question:`Explain this passage from PDF pages ${fromPage}–${toPage}:\n“${text}”`});setPage('chat')}}
-      />}
+      /></Suspense>}
 
       {/* ── Recap ── */}
       {view==='recap' && recap && (

@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "test": "App shell reloads offline",
+      "pass": true
+    },
+    {
+      "test": "Precache excludes PDF engine and worker",
+      "pass": true
+    },
+    {
+      "test": "API/user data not cached",
+      "pass": true
+    }
+  ],
+  "cached": [
+    "/",
+    "/index.html",
+    "/app-icon.svg",
+    "/assets/index-CzOsRIyQ.js",
+    "/assets/index-CJBrHfr7.css",
+    "/assets/plus-jakarta-sans-latin-400-normal-Dhut76fR.woff2",
+    "/assets/plus-jakarta-sans-latin-600-normal-DLTa1BUW.woff2",
+    "/assets/plus-jakarta-sans-latin-700-normal-CfpNZvy6.woff2",
+    "/assets/instrument-serif-latin-400-italic-DKMiL14s.woff2"
+  ]
+}

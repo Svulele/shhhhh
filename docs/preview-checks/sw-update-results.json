@@ -1,0 +1,10 @@
+{
+  "updateToast": true,
+  "refreshNewShell": true,
+  "oldCacheDeleted": true,
+  "offlineFallback": true,
+  "caches": [
+    "shh-shell-update-test-2"
+  ],
+  "conditions": "Local two-deployment worker fixture, production app; no production deployment or user data deletion"
+}

@@ -43,6 +43,7 @@ export interface PdfTask {
     cancel: () => void;
 }
 export interface PdfSource {
+    cleanup?: () => void;
     getViewport: (options: {
         scale: number;
     }) => PdfViewport;

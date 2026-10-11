@@ -1,0 +1,67 @@
+[
+  {
+    "test": "Back dismisses chat context",
+    "pass": true
+  },
+  {
+    "test": "Touch hides keyboard hints",
+    "pass": true
+  },
+  {
+    "test": "Hardware key shows keyboard hints",
+    "pass": true
+  },
+  {
+    "test": "Ambient/alarm share one context",
+    "pass": true,
+    "snapshot": {
+      "time": "2026-10-11T11:31:58.063Z",
+      "build": "09247a086947",
+      "fps": 56,
+      "worstFrameMs": 250,
+      "longTasks": 2,
+      "longTaskSupported": true,
+      "domNodes": 168,
+      "timers": 1,
+      "intervals": 0,
+      "observers": 1,
+      "wrappedListeners": 324,
+      "workers": 0,
+      "canvases": 0,
+      "audioContexts": 1,
+      "history": 3,
+      "heapBytes": 7167514,
+      "lite": false
+    }
+  },
+  {
+    "test": "Production build version matches",
+    "pass": true,
+    "version": {
+      "page": "09247a086947",
+      "remote": {
+        "version": "09247a086947",
+        "builtAt": "2026-10-11T11:25:33.797Z",
+        "mode": "production"
+      }
+    }
+  },
+  {
+    "test": "Offline shell after controlled reload",
+    "pass": true
+  },
+  {
+    "test": "Frame probe enables lite without deviceMemory/CPU hints under 4x CPU + frame load",
+    "pass": true,
+    "probe": {
+      "sample": {
+        "lite": true,
+        "medianMs": 33.299999999999955,
+        "slowFraction": 0.5714285714285714,
+        "frames": 70,
+        "measuredAt": 1791718320453
+      },
+      "lite": true
+    }
+  }
+]

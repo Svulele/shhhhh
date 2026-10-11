@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { keyboardShortcutsEnabled } from '../useInputMode'
+import { useEffect, useRef, useState } from 'react'
 import { useTheme, type Page } from '../App'
 import { timerStore, type TimerState } from '../timerStore'
 import Icon from './Icon'
@@ -15,6 +16,13 @@ function condition(code: number) {
   return { label: 'Rain', icon: 'rain' }
 }
 function WeatherChip() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const outside = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [])
   const [weather, setWeather] = useState<Weather | null>(null)
   useEffect(() => {
     const controller = new AbortController()
@@ -49,9 +57,9 @@ function WeatherChip() {
   }, [])
   if (!weather) return <span />
   const now = condition(weather.current.weather_code)
-  return <div className="weather-wrap">
-    <button className="ui-pill weather-chip" aria-describedby="weather-details"><Icon name={weather.current.is_day ? now.icon : now.icon === 'sun' ? 'moon' : now.icon === 'cloud-sun' ? 'cloud-moon' : now.icon} size={19} /><strong>{Math.round(weather.current.temperature_2m)}°</strong><span>{weather.city}</span></button>
-    <div className="weather-popover" id="weather-details" role="tooltip"><strong>{weather.city}</strong><p>{now.label}</p><p>Today {Math.round(weather.daily.temperature_2m_min[0])}–{Math.round(weather.daily.temperature_2m_max[0])}°C · {weather.daily.precipitation_probability_max[0]}% rain</p><p>Tomorrow: {condition(weather.daily.weather_code[1]).label}, {Math.round(weather.daily.temperature_2m_max[1])}°C</p><small>Weather by Open-Meteo</small></div>
+  return <div className="weather-wrap" ref={ref} onKeyDown={e => { if (keyboardShortcutsEnabled() && e.key === 'Escape') setOpen(false) }}>
+    <button className="ui-pill weather-chip" aria-expanded={open} aria-controls="weather-details" onClick={() => setOpen(v => !v)}><Icon name={weather.current.is_day ? now.icon : now.icon === 'sun' ? 'moon' : now.icon === 'cloud-sun' ? 'cloud-moon' : now.icon} size={19} /><strong>{Math.round(weather.current.temperature_2m)}°</strong><span>{weather.city}</span></button>
+    <div className={`weather-popover ${open ? 'open' : ''}`} id="weather-details" role="tooltip"><strong>{weather.city}</strong><p>{now.label}</p><p>Today {Math.round(weather.daily.temperature_2m_min[0])}–{Math.round(weather.daily.temperature_2m_max[0])}°C · {weather.daily.precipitation_probability_max[0]}% rain</p><p>Tomorrow: {condition(weather.daily.weather_code[1]).label}, {Math.round(weather.daily.temperature_2m_max[1])}°C</p><small>Weather by Open-Meteo</small></div>
   </div>
 }
 export default function TopBar({ navigate, signOut, compact = false }: { navigate: (p: Page) => void; signOut: () => void; compact?: boolean }) {

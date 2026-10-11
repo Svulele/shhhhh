@@ -1,0 +1,154 @@
+{
+  "conditions": "Chrome production, 390x844 touch, actual 4x CPU, local fixtures; next-paint proxies, not field INP",
+  "records": [
+    {
+      "interaction": "tab",
+      "route": "dashboard",
+      "ms": 66.40000000037253
+    },
+    {
+      "interaction": "tab",
+      "route": "chat",
+      "ms": 32.5
+    },
+    {
+      "interaction": "tab",
+      "route": "library",
+      "ms": 30.09999999962747
+    },
+    {
+      "interaction": "tab",
+      "route": "pomodoro",
+      "ms": 28.59999999962747
+    },
+    {
+      "interaction": "tab",
+      "route": "settings",
+      "ms": 31.09999999962747
+    },
+    {
+      "interaction": "tab",
+      "route": "dashboard",
+      "ms": 32.69999999925494
+    },
+    {
+      "interaction": "tab",
+      "route": "chat",
+      "ms": 29.200000001117587
+    },
+    {
+      "interaction": "tab",
+      "route": "library",
+      "ms": 30.59999999962747
+    },
+    {
+      "interaction": "tab",
+      "route": "pomodoro",
+      "ms": 31.800000000745058
+    },
+    {
+      "interaction": "tab",
+      "route": "settings",
+      "ms": 29.700000001117587
+    },
+    {
+      "interaction": "tab",
+      "route": "chat",
+      "ms": 30.09999999962747
+    },
+    {
+      "interaction": "typing",
+      "characters": 60,
+      "medianMs": 6.199999999254942,
+      "worstMs": 16.300000000745058,
+      "messageDOMMutations": 0
+    },
+    {
+      "interaction": "send",
+      "cleared": true,
+      "answer": true
+    },
+    {
+      "interaction": "draft-reload",
+      "pass": true
+    },
+    {
+      "interaction": "tab",
+      "route": "library",
+      "ms": 34.80000000074506
+    },
+    {
+      "interaction": "reader-10s",
+      "frames": 601,
+      "medianMs": 16.699999999999818,
+      "worstMs": 16.80000000000109,
+      "over32": 0,
+      "fps": 60.002196419835656
+    },
+    {
+      "interaction": "notes-open",
+      "ms": 32.5
+    },
+    {
+      "interaction": "notes-close",
+      "ms": 24.700000001117587
+    },
+    {
+      "interaction": "tab",
+      "route": "pomodoro",
+      "ms": 40
+    },
+    {
+      "interaction": "timer-start",
+      "ms": 17
+    },
+    {
+      "interaction": "timer-stop",
+      "ms": 27.699999999254942
+    },
+    {
+      "interaction": "theme",
+      "ms": 24.300000000745058
+    },
+    {
+      "interaction": "theme-return",
+      "ms": 28.800000000745058
+    },
+    {
+      "interaction": "touch-hints",
+      "mode": "touch",
+      "shown": 0
+    },
+    {
+      "interaction": "phone-effects",
+      "blur": 0,
+      "infiniteAnimations": 0
+    },
+    {
+      "interaction": "tab",
+      "route": "dashboard",
+      "ms": 33.19999999925494
+    },
+    {
+      "interaction": "settled-resources",
+      "time": "2026-10-11T11:29:35.463Z",
+      "build": "09247a086947",
+      "fps": 59,
+      "worstFrameMs": 66.7,
+      "longTasks": 0,
+      "longTaskSupported": true,
+      "domNodes": 207,
+      "timers": 1,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 338,
+      "workers": 0,
+      "canvases": 0,
+      "audioContexts": 0,
+      "history": 4,
+      "heapBytes": 6846819,
+      "lite": false
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "test": "PDF engine absent on Home",
+    "pass": true
+  },
+  {
+    "test": "Back closes fullscreen first",
+    "pass": true
+  },
+  {
+    "test": "Back closes account menu",
+    "pass": true
+  },
+  {
+    "test": "Back closes feedback",
+    "pass": true
+  }
+]

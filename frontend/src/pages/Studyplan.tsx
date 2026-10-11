@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { aiFetch, API_URL } from '../api'
 import Icon from '../components/Icon'
 import { useState, useEffect } from 'react'
@@ -76,7 +77,7 @@ async function generatePlan(): Promise<DayPlan> {
     const daysLeft = Math.max(1, Math.ceil((new Date(b.goalDate).getTime() - Date.now()) / 86400000))
     const pagesLeft = b.totalPages - b.currentPage
     const ppd = Math.ceil(pagesLeft / daysLeft)
-    return `"${b.title}" — goal: ${b.goalDate} (${ppd} pg/day, ${daysLeft} days left)`
+    return `"${b.title}" — goal: ${b.goalDate} (${ppd} pg/day, ${plural(daysLeft, 'day')} left)`
   })
   const dueCards   = cards.filter((c: any) => c.nextReview && c.nextReview <= Date.now()).length
   const todaySecs  = timeData[today] ?? 0
@@ -86,7 +87,7 @@ async function generatePlan(): Promise<DayPlan> {
 
   const context = `
 User: ${profile.name || 'student'}, vibe: ${profile.vibe || 'balanced'}, goals: ${profile.goals?.join(', ') || 'general study'}
-Streak: ${streak} days
+Streak: ${plural(streak, 'day')}
 Books in progress: ${inProgress.map((b: any) => `"${b.title}" (${b.currentPage}/${b.totalPages} pages, ${Math.round(b.currentPage/b.totalPages*100)}%)`).join(', ') || 'none'}
 ${booksWithGoals.length ? `Reading goals:\n${booksWithGoals.join('\n')}` : ''}
 Flashcards due for review: ${dueCards}
@@ -274,7 +275,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
             </div>
           </div>
           <button onClick={generate} disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-2)', fontSize: 12, cursor: loading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: loading ? 0.5 : 1, transition: 'all .2s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap:8, padding: '7px 14px', borderRadius: 999, border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-2)', fontSize: 12, cursor: loading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', opacity: loading ? 0.5 : 1, transition: 'all .2s' }}>
             <Icon name="reset" size={12} />
             {loading ? 'Generating…' : 'Refresh'}
           </button>
@@ -283,7 +284,7 @@ export default function StudyPlan({ setPage }: { setPage: (p: Page) => void }) {
         {/* Quick stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 24 }}>
           {[
-            { label: 'Streak',    val: `${streak} days`,    color: 'var(--amber)'  },
+            { label: 'Streak',    val: `${plural(streak, 'day')}`,    color: 'var(--amber)'  },
             { label: 'Today',     val: fmtTime(todaySecs), color: 'var(--accent)' },
             { label: 'Progress',  val: `${pct}%`,          color: 'var(--green)'  },
           ].map(s => (

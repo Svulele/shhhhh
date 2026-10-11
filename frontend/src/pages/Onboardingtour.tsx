@@ -1,3 +1,5 @@
+import { keyboardShortcutsEnabled } from '../useInputMode'
+import useOverlayBack from '../components/useOverlayBack'
 import { useState, useEffect, useRef } from 'react'
 import type { Page } from '../App'
 import { supabase } from '../supabase'
@@ -137,8 +139,11 @@ export default function OnboardingTour({
 }) {
   const [step,      setStep]      = useState(0)
   const [visible,   setVisible]   = useState(false)
+  useOverlayBack(visible, () => setVisible(false))
   const [exiting,   setExiting]   = useState(false)
   const [spotlight, setSpotlight] = useState<{ top:number; left:number; width:number; height:number } | null>(null)
+  const actionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(actionTimer.current), [])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -147,18 +152,16 @@ export default function OnboardingTour({
       return () => clearTimeout(t)
     }
 
-    // Check both local + Supabase before showing
-    isTourDone(userId).then(done => {
-      if (done) return
-      const t = setTimeout(() => setVisible(true), 900)
-      return () => clearTimeout(t)
-    })
+    let active = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    isTourDone(userId).then(done => { if(active && !done) timer = setTimeout(() => setVisible(true), 900) })
+    return () => { active = false; clearTimeout(timer) }
   }, [userId, forceShow])
 
   useEffect(() => {
     if (!visible) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismiss()
+      if (keyboardShortcutsEnabled() && e.key === 'Escape') dismiss()
       if (e.key === 'Enter') advance()
     }
     window.addEventListener('keydown', handler)
@@ -196,7 +199,7 @@ export default function OnboardingTour({
 
   const dismiss = () => {
     setExiting(true)
-    setTimeout(async () => {
+    clearTimeout(actionTimer.current); actionTimer.current = setTimeout(async () => {
       setVisible(false)
       await markTourDone(userId)
       onDone?.()
@@ -206,7 +209,7 @@ export default function OnboardingTour({
   const advance = () => {
     if (isLast) { dismiss(); return }
     setExiting(true)
-    setTimeout(() => {
+    clearTimeout(actionTimer.current); actionTimer.current = setTimeout(() => {
       const next = STEPS[step + 1]
       if (next.page) setPage(next.page)
       setStep(s => s + 1)
@@ -218,7 +221,7 @@ export default function OnboardingTour({
   const goBack = () => {
     if (step === 0) return
     setExiting(true)
-    setTimeout(() => {
+    clearTimeout(actionTimer.current); actionTimer.current = setTimeout(() => {
       const prev = STEPS[step - 1]
       if (prev.page) setPage(prev.page)
       setStep(s => s - 1)
@@ -292,7 +295,7 @@ export default function OnboardingTour({
 
       <div onClick={dismiss} style={{ position:'fixed', inset:0, zIndex:9992, cursor:'pointer' }}/>
 
-      <div style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="App tour">
+      <div className="tour-dialog" style={{ ...cardStyle, pointerEvents:'auto' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="App tour">
         <div style={{ height:2, background:'var(--text-4)', borderRadius:99, overflow:'hidden', marginBottom:18 }}>
           <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg,var(--accent),#b07ef7)', width:`${progress}%`, transition:'width .35s ease' }}/>
         </div>
@@ -315,7 +318,7 @@ export default function OnboardingTour({
         </div>
 
         {current.bullets && (
-          <div style={{ display:'grid', gap:7, margin:'0 0 18px 56px' }}>
+          <div style={{ display:'grid', gap:8, margin:'0 0 18px 56px' }}>
             {current.bullets.map(item => (
               <div key={item} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:12, color:'var(--text-2)', lineHeight:1.45 }}>
                 <span style={{ width:5, height:5, borderRadius:'50%', background:'var(--accent)', marginTop:6, flexShrink:0, boxShadow:'0 0 10px var(--accent-glow)' }}/>
@@ -326,7 +329,7 @@ export default function OnboardingTour({
         )}
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', gap:5 }} aria-label={`Step ${step + 1} of ${STEPS.length}`}>
+          <div style={{ display:'flex', gap:8 }} aria-label={`Step ${step + 1} of ${STEPS.length}`}>
             {STEPS.map((_, i) => (
               <div key={i} style={{
                 height:5, borderRadius:99,

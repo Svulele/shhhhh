@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import OnboardingFlow from '../components/auth/OnboardingFlow'
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '../App'
@@ -6,11 +7,11 @@ import { getStreak, recordStudyDay } from '../supabase'
 import { generateWeeklySummaryText, summarizeStudyJourney } from '../studyHistory'
 import { timerStore } from '../timerStore'
 import Icon from '../components/Icon'
-import { extractReadingPages } from './Library'
+const extractReadingPages: typeof import('./Library').extractReadingPages = async (...args) => (await import('./Library')).extractReadingPages(...args)
 
 // ── Confetti ──────────────────────────────────────────────────
 function fireConfetti() {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 820px)').matches || document.documentElement.classList.contains('lite')) return () => {}
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;width:100%;height:100%'
   canvas.width = window.innerWidth; canvas.height = window.innerHeight
@@ -24,7 +25,8 @@ function fireConfetti() {
     spin: (Math.random()-0.5)*0.2, angle: Math.random()*Math.PI*2,
     opacity: 1,
   }))
-  let frame = 0
+  let frame = 0, raf = 0
+  const cleanup = () => { cancelAnimationFrame(raf); canvas.width=0; canvas.height=0; canvas.remove() }
   const tick = () => {
     ctx.clearRect(0,0,canvas.width,canvas.height)
     pieces.forEach(p => {
@@ -35,10 +37,11 @@ function fireConfetti() {
       ctx.restore()
     })
     frame++
-    if (frame < 160) requestAnimationFrame(tick)
-    else canvas.remove()
+    if (frame < 160 && !document.hidden) raf = requestAnimationFrame(tick)
+    else cleanup()
   }
-  requestAnimationFrame(tick)
+  raf = requestAnimationFrame(tick)
+  return cleanup
 }
 
 // ── Streak milestone overlay ──────────────────────────────────
@@ -48,9 +51,9 @@ function MilestoneOverlay({ streak, name, onDismiss }: { streak:number; name:str
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    fireConfetti()
+    const stopConfetti = fireConfetti()
     const t = setTimeout(onDismiss, 6000)
-    return () => clearTimeout(t)
+    return () => { clearTimeout(t); stopConfetti() }
   }, [])
 
   const handleShare = () => {
@@ -114,7 +117,7 @@ function MilestoneOverlay({ streak, name, onDismiss }: { streak:number; name:str
         </div>
 
         <div style={{display:'flex',gap:10}}>
-          <button onClick={handleShare} style={{flex:1,padding:'11px',borderRadius:12,background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',justifyContent:'center',gap:7,touchAction:'manipulation'}}>
+          <button onClick={handleShare} style={{flex:1,padding:'11px',borderRadius:12,background:'var(--accent-soft)',border:'0.5px solid var(--border-active)',color:'var(--accent)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,touchAction:'manipulation'}}>
             <Icon name="share" size={14} />
             Share
           </button>
@@ -168,11 +171,11 @@ function StudyStats() {
           </div>
         ))}
       </div>
-      <div style={{display:'flex',alignItems:'flex-end',gap:4,height:40}}>
+      <div style={{display:'flex',alignItems:'flex-end',gap:8,height:40}}>
         {days.map(d=>{
           const h = Math.max(3,(d.secs/maxS)*40)
           return (
-            <div key={d.key} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+            <div key={d.key} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
               <div title={fmtMins(d.secs)} style={{width:'100%',height:h,borderRadius:3,
                 background:d.isToday?'linear-gradient(180deg,var(--accent),#7b6cf6)':d.secs>0?'var(--border-active)':'var(--text-4)',
                 transition:'height .5s cubic-bezier(0.22,1,0.36,1)',opacity:d.secs>0?1:0.4}}/>
@@ -208,8 +211,8 @@ function StudyJourney() {
 
   const s = summary.stats
   const stat = [
-    { label: '7 days', value: `${s.weekPages}p`, sub: `${s.weekReviews} cards` },
-    { label: '30 days', value: fmtMins(s.monthFocus), sub: `${s.monthPages} pages` },
+    { label: '7 days', value: `${s.weekPages}p`, sub: plural(s.weekReviews, 'card') },
+    { label: '30 days', value: fmtMins(s.monthFocus), sub: plural(s.monthPages, 'page') },
     { label: 'Still to do', value: `${s.remainingPages}p`, sub: `${s.activeBooks} active` },
   ]
 
@@ -242,7 +245,7 @@ function StudyJourney() {
       {summary.coverage.length > 0 && (
         <div style={{borderTop:'0.5px solid var(--border)',paddingTop:12}}>
           <div style={{fontSize:10,letterSpacing:'1.8px',textTransform:'uppercase',color:'var(--text-3)',marginBottom:8}}>Covered so far</div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {summary.coverage.map(item => (
               <div key={item} style={{fontSize:12,color:'var(--text-2)',fontWeight:300,lineHeight:1.45,display:'flex',gap:8}}>
                 <Icon name="check" size={15} style={{color:'var(--green)'}} />
@@ -281,22 +284,25 @@ export default function Dashboard({ setPage }: { setPage:(p:Page)=>void }) {
   },[])
 
   useEffect(()=>{
+    let active = true, timer: ReturnType<typeof setTimeout> | undefined
     if(user){
       recordStudyDay(user.id).catch(console.warn)
       getStreak(user.id).then(s=>{
+        if (!active) return
         setStreak(s)
         localStorage.setItem('shh_streak',String(s))
         // Check if this is a milestone AND we haven't shown it today
         const lastShown = localStorage.getItem('shh_milestone_shown')
         const today = new Date().toISOString().split('T')[0]
         if (MILESTONES.includes(s) && lastShown !== `${today}-${s}`) {
-          setTimeout(() => setShowMilestone(true), 1200) // slight delay for drama
+          timer = setTimeout(() => setShowMilestone(true), 1200) // slight delay for drama
           localStorage.setItem('shh_milestone_shown', `${today}-${s}`)
         }
       }).catch(()=>setStreak(Number(localStorage.getItem('shh_streak')??0)))
     } else {
       setStreak(Number(localStorage.getItem('shh_streak')??0))
     }
+    return () => { active=false; clearTimeout(timer) }
   },[user])
 
   if (!profile?.onboarded) return <OnboardingFlow onDone={p=>setProfile(p)}/>

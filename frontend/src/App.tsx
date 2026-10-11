@@ -1,22 +1,23 @@
 import { clearStudyDeviceData } from './localPrivacy'
-import { useState, useEffect, useRef, createContext, useContext } from 'react'
+import { startTransition, useMemo, useCallback, lazy, Suspense, useState, useEffect, useRef, createContext, useContext } from 'react'
 import React from 'react'
 import AuthGate, { recordStudyDay, markTourDone } from './AuthGate'
 import type { User } from '@supabase/supabase-js'
 import Dashboard from './pages/Dashboard'
-import Library from './pages/Library'
-import Chat from './pages/Chat'
+const Library = lazy(() => import('./pages/Library'))
+const Chat = lazy(() => import('./pages/Chat'))
 import Pomodoro, { TimerAlarm } from './pages/Pomodoro'
-import Settings    from './pages/Settings'
-import Flashcards  from './pages/Flashcards'
-import StudyPlan   from './pages/Studyplan'
-import Notes       from './pages/Notes'
+const Settings = lazy(() => import('./pages/Settings'))
+const Flashcards = lazy(() => import('./pages/Flashcards'))
+const StudyPlan = lazy(() => import('./pages/Studyplan'))
+const Notes = lazy(() => import('./pages/Notes'))
 import { registerSW } from './pwa'
 import LegalPage, { type Policy } from './components/legal/Legal'
 import PrivacyTools from './components/legal/PrivacyTools'
 import OnboardingTour from './pages/Onboardingtour'
 import './App.css'
 import './redesign.css'
+import { useRouteScroll } from './useRouteScroll'
 import { initialTheme } from './theme'
 import Navigation from './components/Navigation'
 import TopBar from './components/TopBar'
@@ -41,18 +42,32 @@ function AppShell({
   initialTourDone: boolean
 }) {
   const [page, setPage]         = useState<Page>(() => { const saved=sessionStorage.getItem('shh_active_page'); return ['dashboard','library','chat','pomodoro','settings','flashcards','plan','notes'].includes(saved ?? '') ? saved as Page : 'dashboard' })
+  useRouteScroll(page)
   const currentPage = useRef(page)
   useEffect(() => { currentPage.current = page; sessionStorage.setItem('shh_active_page',page) }, [page])
   useEffect(() => { if (import.meta.env.PROD) registerSW().catch(console.warn) }, [])
+  useEffect(() => {
+    // Warm only primary route UI after the first paint; PDF engine/reader stay on demand.
+    const warm = () => { void import('./pages/Chat'); void import('./pages/Library'); void import('./pages/Settings') }
+    if ('requestIdleCallback' in window) { const id=window.requestIdleCallback(warm,{timeout:1200}); return()=>window.cancelIdleCallback(id) }
+    const id=setTimeout(warm,250);return()=>clearTimeout(id)
+  }, [])
+  const [readerModeActive, setReaderModeActive] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   useEffect(() => {
-    const viewport=window.visualViewport
-    const resize=()=>document.documentElement.style.setProperty('--viewport-height',`${viewport?.height || window.innerHeight}px`)
-    resize();viewport?.addEventListener('resize',resize)
-    return()=>{viewport?.removeEventListener('resize',resize);document.documentElement.style.removeProperty('--viewport-height')}
-  },[])
+    history.replaceState({ ...history.state, shhPage: currentPage.current }, '')
+    const back = () => {
+      if (history.state?.shhOverlay) return
+      const target = history.state?.shhPage as Page | undefined
+      if (target && target !== currentPage.current && window.dispatchEvent(new Event('shh:before-leave', { cancelable: true }))) {
+        setPage(target); setNavOpen(false); setReaderModeActive(false)
+      }
+    }
+    window.addEventListener('popstate', back)
+    return () => window.removeEventListener('popstate', back)
+  }, [])
+
   const [material, setMaterial] = useState<any>(null)
-  const [readerModeActive, setReaderModeActive] = useState(false)
   const [tourRun, setTourRun]   = useState(0)
   const [theme, setTheme]       = useState<Theme>(() =>
     initialTheme()
@@ -62,10 +77,10 @@ function AppShell({
   // not by polling localStorage. No interval needed.
   const [showTour, setShowTour] = useState(!initialTourDone)
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
     setTheme(next); localStorage.setItem('shh_theme', next)
-  }
+  }, [theme])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -92,15 +107,20 @@ function AppShell({
     return () => window.removeEventListener('shh:restart-tour', handler)
   }, [])
 
-  const recordStudy = () => {
+  const recordStudy = useCallback(() => {
     if (user) recordStudyDay(user.id).catch(console.warn)
-  }
+  }, [user])
+  const themeContext = useMemo(()=>({theme,toggle}),[theme,toggle])
+  const userContext = useMemo(()=>({user,recordStudy}),[user,recordStudy])
 
   const navigate = (p: Page, keepMaterial = false) => {
     if (p === currentPage.current) { setNavOpen(false); return }
     if (!window.dispatchEvent(new Event('shh:before-leave', { cancelable: true }))) return
+    document.documentElement.classList.remove('tabs-hidden')
     if(p==='chat' && !keepMaterial)setMaterial(null)
-    setPage(p)
+    if (history.state?.shhOverlay) history.replaceState({ ...history.state, shhOverlay: undefined }, '')
+    history.replaceState({ ...history.state, shhOverlay: undefined, shhPage: p }, '')
+    startTransition(() => setPage(p))
     setNavOpen(false)
     if (p !== 'library') setReaderModeActive(false)
     if (p !== 'dashboard') recordStudy()
@@ -119,12 +139,12 @@ function AppShell({
   const isHome = page === 'dashboard'
 
   return (
-    <ThemeCtx.Provider value={{ theme, toggle }}>
-      <UserCtx.Provider value={{ user, recordStudy }}>
+    <ThemeCtx.Provider value={themeContext}>
+      <UserCtx.Provider value={userContext}>
         <div className={`app ${isHome || navOpen ? 'sidebar-visible' : ''}`} data-page={page} data-reader={readerModeActive}>
-          <main tabIndex={-1} id="main-content" className={isHome ? 'main-home' : 'main'} key={page}>
+          <main tabIndex={-1} id="main-content" className={isHome ? 'main-home' : 'main'}>
             <TopBar navigate={navigate} signOut={guardedSignOut} compact={page === 'pomodoro'} />
-            <div className="page-enter">
+            <div className="page-enter"><Suspense fallback={<p className="route-loading" role="status">Opening your study space…</p>}>
               {page === 'dashboard'  && <Dashboard setPage={navigate} />}
               {page === 'library'    && <Library setMaterial={setMaterial} setPage={p=>navigate(p,true)} onReaderModeChange={setReaderModeActive} />}
               {page === 'chat'       && <Chat material={material} />}
@@ -133,7 +153,7 @@ function AppShell({
               {page === 'flashcards' && <Flashcards />}
               {page === 'plan'       && <StudyPlan setPage={navigate} />}
               {page === 'notes'      && <Notes />}
-            </div>
+            </Suspense></div>
           </main>
           <Navigation page={page} navigate={navigate} signOut={guardedSignOut} open={navOpen} setOpen={setNavOpen} />
           <TimerAlarm />

@@ -1,0 +1,1708 @@
+{
+  "conditions": "390x844 touch, production, 4x CPU, local AI fixture, GC at checkpoints; wrapper instrumentation enabled",
+  "records": [
+    {
+      "cycle": 1,
+      "tabMs": 354,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 19.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999999818,
+        "worstMs": 16.700000000000728,
+        "fps": 60.00393468424163
+      },
+      "time": "2026-10-11T10:26:30.160Z",
+      "build": "local",
+      "fps": 53,
+      "worstFrameMs": 500.1,
+      "longTasks": 4,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 8,
+      "heapBytes": 7277025,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 2,
+      "tabMs": 70,
+      "typing": {
+        "medianMs": 16.5,
+        "worstMs": 27.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999891,
+        "worstMs": 16.799999999999272,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:26:35.831Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.7,
+      "longTasks": 4,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 13,
+      "heapBytes": 7625979,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 3,
+      "tabMs": 46,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 18.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999891,
+        "worstMs": 16.799999999999272,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:26:40.665Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 5,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 18,
+      "heapBytes": 7886115,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 4,
+      "tabMs": 35,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 18
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.799999999999272,
+        "fps": 59.998032851381886
+      },
+      "time": "2026-10-11T10:26:45.358Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 50,
+      "longTasks": 5,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 23,
+      "heapBytes": 7950791,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 5,
+      "tabMs": 36,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.799999999999272,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:26:50.082Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 50.1,
+      "longTasks": 5,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 28,
+      "heapBytes": 8119651,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 6,
+      "tabMs": 35,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 20.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.799999999999272,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:26:54.809Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 33,
+      "heapBytes": 8229043,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 7,
+      "tabMs": 36,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 22.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 60.00983767830791
+      },
+      "time": "2026-10-11T10:26:59.490Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 38,
+      "heapBytes": 8263279,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 8,
+      "tabMs": 42,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 22.90000000037253
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 60.00393468424168
+      },
+      "time": "2026-10-11T10:27:04.171Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 43,
+      "heapBytes": 8347187,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 9,
+      "tabMs": 33,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 22.899999999441206
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:27:08.761Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 48,
+      "heapBytes": 8465331,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 10,
+      "tabMs": 35,
+      "typing": {
+        "medianMs": 16.699999999254942,
+        "worstMs": 23.300000000745058
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:27:13.390Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8474375,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 11,
+      "tabMs": 38,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 22.40000000037253
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:17.957Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 10257401,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 398,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 12,
+      "tabMs": 37,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 23.299999999813735
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:22.681Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8539891,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 13,
+      "tabMs": 59,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 23.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.700000000004366,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:27.370Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 50.1,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8553771,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 14,
+      "tabMs": 39,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 19.5
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 60.0039346842421
+      },
+      "time": "2026-10-11T10:27:32.229Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 49.9,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8586995,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 15,
+      "tabMs": 50,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23.300000000745058
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99400059993966
+      },
+      "time": "2026-10-11T10:27:36.866Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.7,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8602267,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 16,
+      "tabMs": 38,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:41.502Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8607199,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 17,
+      "tabMs": 37,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 18.40000000037253
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:46.152Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8615747,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 18,
+      "tabMs": 37,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23.5
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.79999999998836,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:27:50.816Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8623919,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 19,
+      "tabMs": 41,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 25
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:55.442Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8649707,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 20,
+      "tabMs": 36,
+      "typing": {
+        "medianMs": 16.699999999254942,
+        "worstMs": 21.799999999813735
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:27:59.995Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8661719,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 21,
+      "tabMs": 37,
+      "typing": {
+        "medianMs": 16.699999999254942,
+        "worstMs": 24
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:04.667Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8681655,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 22,
+      "tabMs": 48,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 26.199999999254942
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:09.384Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.7,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8683879,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 23,
+      "tabMs": 37,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 22.09999999962747
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:14.025Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8698443,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 24,
+      "tabMs": 38,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 22.59999999962747
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99400059993966
+      },
+      "time": "2026-10-11T10:28:18.776Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8701123,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 25,
+      "tabMs": 32,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:23.408Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8708407,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 26,
+      "tabMs": 48,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 23.5
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.79999999998836,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:28:28.083Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50.1,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8705055,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 27,
+      "tabMs": 38,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 23.899999999441206
+      },
+      "scroll": {
+        "medianMs": 16.69999999999709,
+        "worstMs": 16.80000000000291,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:32.831Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8709087,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 28,
+      "tabMs": 47,
+      "typing": {
+        "medianMs": 16.799999999813735,
+        "worstMs": 23.90000000037253
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:28:37.626Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 16.8,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8719683,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 29,
+      "tabMs": 57,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 25
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.00393468424297
+      },
+      "time": "2026-10-11T10:28:42.568Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8757607,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 30,
+      "tabMs": 48,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 24.100000000558794
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:28:47.371Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 200,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8780131,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 387,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 31,
+      "tabMs": 39,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 26.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:28:52.593Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 208,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8782832,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 32,
+      "tabMs": 53,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 26.799999999813735
+      },
+      "scroll": {
+        "medianMs": 16.70000000001164,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:28:57.574Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8786388,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 33,
+      "tabMs": 50,
+      "typing": {
+        "medianMs": 16.5,
+        "worstMs": 23.5
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:02.502Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.7,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8785196,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 34,
+      "tabMs": 45,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 23.5
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:07.448Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8763256,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 35,
+      "tabMs": 45,
+      "typing": {
+        "medianMs": 16.5,
+        "worstMs": 24.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99400059993966
+      },
+      "time": "2026-10-11T10:29:12.265Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.6,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8760340,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 36,
+      "tabMs": 46,
+      "typing": {
+        "medianMs": 16.5,
+        "worstMs": 24.40000000037253
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:29:17.171Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8770120,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 37,
+      "tabMs": 44,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 25.399999999441206
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:21.975Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8770052,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 38,
+      "tabMs": 53,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 23.59999999962747
+      },
+      "scroll": {
+        "medianMs": 16.70000000001164,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:26.805Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8780852,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 39,
+      "tabMs": 51,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 24.199999999254942
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.79999999998836,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:29:31.790Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.3,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8780404,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 40,
+      "tabMs": 53,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 24.399999999441206
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.79999999998836,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:36.670Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 49.9,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8787652,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 41,
+      "tabMs": 50,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 27.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.00983767830791
+      },
+      "time": "2026-10-11T10:29:41.667Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8783640,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 42,
+      "tabMs": 47,
+      "typing": {
+        "medianMs": 16.699999999254942,
+        "worstMs": 25.200000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:46.709Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8803928,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 43,
+      "tabMs": 58,
+      "typing": {
+        "medianMs": 16.799999999813735,
+        "worstMs": 24.199999999254942
+      },
+      "scroll": {
+        "medianMs": 16.70000000001164,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:29:51.721Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.6,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8796844,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 44,
+      "tabMs": 52,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 25.700000000186265
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.003934684241244
+      },
+      "time": "2026-10-11T10:29:56.740Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8845096,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 45,
+      "tabMs": 73,
+      "typing": {
+        "medianMs": 16.600000000558794,
+        "worstMs": 25.5
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.79999999998836,
+        "fps": 60.00393468424297
+      },
+      "time": "2026-10-11T10:30:01.707Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8848464,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 46,
+      "tabMs": 55,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 26.100000000558794
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:30:06.710Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8853888,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 47,
+      "tabMs": 49,
+      "typing": {
+        "medianMs": 16.699999999254942,
+        "worstMs": 25.100000000558794
+      },
+      "scroll": {
+        "medianMs": 16.70000000001164,
+        "worstMs": 16.800000000017462,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:30:11.973Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 16.8,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8842152,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 389,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 48,
+      "tabMs": 52,
+      "typing": {
+        "medianMs": 16.59999999962747,
+        "worstMs": 25.799999999813735
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 60.00983767830791
+      },
+      "time": "2026-10-11T10:30:16.996Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 66.6,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8853384,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 396,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 49,
+      "tabMs": 49,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 23.299999999813735
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.800000000017462,
+        "fps": 59.998032851382945
+      },
+      "time": "2026-10-11T10:30:21.979Z",
+      "build": "local",
+      "fps": 60,
+      "worstFrameMs": 33.4,
+      "longTasks": 6,
+      "domNodes": 201,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8854620,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 388,
+        "jsEventListeners": 377
+      }
+    },
+    {
+      "cycle": 50,
+      "tabMs": 49,
+      "typing": {
+        "medianMs": 16.700000000186265,
+        "worstMs": 24.899999999441206
+      },
+      "scroll": {
+        "medianMs": 16.699999999982538,
+        "worstMs": 16.79999999998836,
+        "fps": 59.99999999999999
+      },
+      "time": "2026-10-11T10:30:26.916Z",
+      "build": "local",
+      "fps": 59,
+      "worstFrameMs": 50,
+      "longTasks": 6,
+      "domNodes": 207,
+      "timers": 0,
+      "intervals": 0,
+      "observers": 2,
+      "wrappedListeners": 330,
+      "workers": 1,
+      "canvases": 1,
+      "audioContexts": 1,
+      "history": 50,
+      "heapBytes": 8851292,
+      "lite": false,
+      "native": {
+        "documents": 1,
+        "nodes": 397,
+        "jsEventListeners": 377
+      }
+    }
+  ],
+  "errors": [
+    "Cannot read properties of null (reading 'classList')"
+  ]
+}

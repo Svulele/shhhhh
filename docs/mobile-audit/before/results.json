@@ -1,0 +1,938 @@
+[
+  {
+    "name": "dashboard-280x653-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-280x653-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-280x653-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-280x653-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-280x653-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-280x653-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-280x653-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-280-light",
+    "overflow": true
+  },
+  {
+    "name": "settings-280x653-light",
+    "overflow": false,
+    "smallButtons": 7,
+    "errors": []
+  },
+  {
+    "name": "dashboard-280x653-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-280x653-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-280x653-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-280x653-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-280x653-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-280x653-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-280x653-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-280-dark",
+    "overflow": true
+  },
+  {
+    "name": "settings-280x653-dark",
+    "overflow": false,
+    "smallButtons": 7,
+    "errors": []
+  },
+  {
+    "name": "dashboard-320x568-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-320x568-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-320x568-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-320x568-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-320x568-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-320x568-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-320x568-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-320-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-320x568-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-320x568-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-320x568-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-320x568-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-320x568-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-320x568-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-320x568-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-320x568-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-320-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-320x568-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-360x640-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-360x640-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-360x640-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-360x640-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-360x640-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-360x640-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-360x640-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-360-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-360x640-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-360x640-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-360x640-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-360x640-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-360x640-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-360x640-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-360x640-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-360x640-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-360-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-360x640-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-375x667-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-375x667-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-375x667-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-375x667-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-375x667-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-375x667-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-375x667-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-375-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-375x667-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-375x667-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-375x667-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-375x667-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-375x667-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-375x667-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-375x667-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-375x667-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-375-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-375x667-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-390x844-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-390x844-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-390x844-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-390x844-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-390x844-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-390x844-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-390x844-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-390-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-390x844-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-390x844-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-390x844-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-390x844-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-390x844-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-390x844-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-390x844-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-390x844-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-390-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-390x844-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-430x932-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-430x932-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-430x932-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-430x932-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-430x932-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-430x932-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-430x932-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-430-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-430x932-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-430x932-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-430x932-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-430x932-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-430x932-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-430x932-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-430x932-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-430x932-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-430-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-430x932-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-412x915-light",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-412x915-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-412x915-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-412x915-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-412x915-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-412x915-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-412x915-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-412-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-412x915-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-412x915-dark",
+    "overflow": false,
+    "smallButtons": 1,
+    "errors": []
+  },
+  {
+    "name": "chat-412x915-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-412x915-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-412x915-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-412x915-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-412x915-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-412x915-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-412-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-412x915-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-844x390-light",
+    "overflow": false,
+    "smallButtons": 0,
+    "errors": []
+  },
+  {
+    "name": "chat-844x390-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-844x390-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-844x390-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-844x390-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-844x390-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-844x390-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-844-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-844x390-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-844x390-dark",
+    "overflow": false,
+    "smallButtons": 0,
+    "errors": []
+  },
+  {
+    "name": "chat-844x390-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-844x390-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-844x390-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-844x390-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-844x390-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-844x390-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-844-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-844x390-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-884x720-light",
+    "overflow": false,
+    "smallButtons": 0,
+    "errors": []
+  },
+  {
+    "name": "chat-884x720-light",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-884x720-light",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-884x720-light",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-884x720-light",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-884x720-light",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-884x720-light",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-884-light",
+    "overflow": false
+  },
+  {
+    "name": "settings-884x720-light",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  },
+  {
+    "name": "dashboard-884x720-dark",
+    "overflow": false,
+    "smallButtons": 0,
+    "errors": []
+  },
+  {
+    "name": "chat-884x720-dark",
+    "overflow": false,
+    "smallButtons": 9,
+    "errors": []
+  },
+  {
+    "name": "library-884x720-dark",
+    "overflow": false,
+    "smallButtons": 4,
+    "errors": []
+  },
+  {
+    "name": "plan-884x720-dark",
+    "overflow": false,
+    "smallButtons": 6,
+    "errors": []
+  },
+  {
+    "name": "flashcards-884x720-dark",
+    "overflow": false,
+    "smallButtons": 2,
+    "errors": []
+  },
+  {
+    "name": "notes-884x720-dark",
+    "overflow": false,
+    "smallButtons": 3,
+    "errors": []
+  },
+  {
+    "name": "pomodoro-884x720-dark",
+    "overflow": false,
+    "smallButtons": 5,
+    "errors": []
+  },
+  {
+    "name": "fullscreen-884-dark",
+    "overflow": false
+  },
+  {
+    "name": "settings-884x720-dark",
+    "overflow": false,
+    "smallButtons": 10,
+    "errors": []
+  }
+]

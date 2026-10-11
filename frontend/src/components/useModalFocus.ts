@@ -1,6 +1,9 @@
+import { keyboardShortcutsEnabled } from '../useInputMode'
+import useOverlayBack from './useOverlayBack'
 import { useEffect, useRef, type RefObject } from 'react'
 
 export default function useModalFocus(ref: RefObject<HTMLElement | null>, open: boolean, onClose: () => void) {
+  useOverlayBack(open, onClose)
   const close = useRef(onClose)
   useEffect(() => { close.current = onClose }, [onClose])
   useEffect(() => {
@@ -13,7 +16,7 @@ export default function useModalFocus(ref: RefObject<HTMLElement | null>, open: 
     const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]')).filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0)
     focusable()[0]?.focus()
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); close.current() }
+      if (keyboardShortcutsEnabled() && e.key === 'Escape') { e.preventDefault(); close.current() }
       if (e.key !== 'Tab') return
       const elements = focusable(), first = elements[0], last = elements[elements.length - 1]
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }

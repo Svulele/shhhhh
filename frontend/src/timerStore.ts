@@ -34,9 +34,13 @@ function notify() {
   listeners.forEach(l => l({ ...state }))
 }
 
+function savePresentationTimer() {
+  try { sessionStorage.setItem('shh_timer_resume', JSON.stringify({ state, deadline })) } catch { /* private browsing/storage unavailable */ }
+}
 function set(partial: Partial<TimerState>) {
   state = { ...state, ...partial }
   notify()
+  if (Object.keys(partial).some(key => key !== 'left')) savePresentationTimer()
 }
 
 // ── Alarm callbacks ───────────────────────────────────────────
@@ -132,3 +136,13 @@ if (typeof window.addEventListener === 'function') window.addEventListener('shh:
   clearInterval(interval!);interval=null;deadline=0;onAlarm=null
   set({mode:'work',left:1500,total:1500,running:false,sessions:0,workMins:25,brkMins:5,alarmType:'bell'})
 })
+
+// Session-only reload resilience; existing study-event persistence is unchanged.
+try {
+  const saved = JSON.parse(sessionStorage.getItem('shh_timer_resume') || 'null')
+  if (saved?.state && ['work','break'].includes(saved.state.mode) && Number.isFinite(saved.state.left) && Number.isFinite(saved.state.total) && Number.isFinite(saved.deadline)) {
+    state = { ...state, ...saved.state }; deadline = saved.deadline
+    if (state.running) { tick(); if(state.running) interval = setInterval(tick,1000) }
+  }
+} catch { /* no recoverable session */ }
+if (typeof window.addEventListener === 'function') window.addEventListener('pagehide',savePresentationTimer)

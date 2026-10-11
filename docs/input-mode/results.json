@@ -1,0 +1,20 @@
+[
+  {
+    "mode": "touch",
+    "initialInput": "touch",
+    "hintVisible": false,
+    "touchFieldShortcutsIgnored": true,
+    "hardwareSpaceAndEscape": true,
+    "touchTakesOver": true,
+    "errors": []
+  },
+  {
+    "mode": "desktop",
+    "initialInput": "mouse",
+    "hintVisible": true,
+    "touchFieldShortcutsIgnored": true,
+    "hardwareSpaceAndEscape": true,
+    "touchTakesOver": true,
+    "errors": []
+  }
+]

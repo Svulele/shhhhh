@@ -1,0 +1,48 @@
+[
+  {
+    "test": "Legacy PDF extraction without modern Promise/Array APIs",
+    "pass": true
+  },
+  {
+    "test": "PDF canvas paints without errors",
+    "pass": true
+  },
+  {
+    "test": "Dock stays above reading viewport",
+    "pass": true
+  },
+  {
+    "test": "Page pill hides while scrolling down",
+    "pass": true
+  },
+  {
+    "test": "Page pill returns after idle",
+    "pass": true
+  },
+  {
+    "test": "Reader note field and action above keyboard",
+    "pass": true
+  },
+  {
+    "test": "Back closes notes before reader",
+    "pass": true
+  },
+  {
+    "test": "Reader scroll sample under 4x CPU + Slow 4G",
+    "pass": true,
+    "detail": {
+      "frames": 121,
+      "over50ms": 0,
+      "maxMs": 16.80000000000291
+    }
+  },
+  {
+    "test": "Back closes reader to library",
+    "pass": true
+  },
+  {
+    "test": "No uncaught page errors",
+    "pass": true,
+    "detail": []
+  }
+]

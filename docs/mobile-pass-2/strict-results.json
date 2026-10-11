@@ -1,0 +1,12 @@
+{
+  "cycles": 5,
+  "errors": [],
+  "warnings": [
+    "Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture.",
+    "Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture.",
+    "Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture.",
+    "Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture.",
+    "Failed to execute 'requestFullscreen' on 'Element': API can only be initiated by a user gesture."
+  ],
+  "conditions": "Vite development build with React StrictMode; no AI transport fixture, draft-only chat; synthetic PDF"
+}

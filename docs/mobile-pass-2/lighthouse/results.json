@@ -1,0 +1,356 @@
+[
+  {
+    "route": "dashboard",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 96
+    },
+    "lcpMs": 1469.5411376953125,
+    "tbtMs": 0,
+    "cls": 0,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 11.029
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 85.708
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-H2",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,0,MAIN,1,DIV,0,SECTION,3,DIV,0,ARTICLE,1,H2",
+          "selector": "section.redesign-home > div.home-study-grid > article.continue-hero > h2",
+          "boundingRect": {
+            "top": 226,
+            "bottom": 284,
+            "left": 40,
+            "right": 306,
+            "width": 266,
+            "height": 58
+          },
+          "snippet": "<h2>",
+          "nodeLabel": "Your next chapter starts here."
+        }
+      ]
+    }
+  },
+  {
+    "route": "chat",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 96
+    },
+    "lcpMs": 1424.5411376953125,
+    "tbtMs": 0,
+    "cls": 0,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 8.572
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 345.822
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-DIV",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,0,MAIN,1,DIV,0,SECTION,2,DIV,0,DIV,0,DIV,0,DIV,0,DIV",
+          "selector": "div > div.chat-messages > div > div",
+          "boundingRect": {
+            "top": 118,
+            "bottom": 145,
+            "left": 26,
+            "right": 386,
+            "width": 360,
+            "height": 27
+          },
+          "snippet": "<div style=\"font-family: var(--font-display); font-size: 21px; letter-spacing: -0.4px;\">",
+          "nodeLabel": "Hey Route! What are we working on?"
+        }
+      ]
+    }
+  },
+  {
+    "route": "library",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 96
+    },
+    "lcpMs": 1424.5411376953125,
+    "tbtMs": 0,
+    "cls": 0,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 7.127000001907349
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 340.8289999980926
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-H1",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,0,MAIN,1,DIV,0,DIV,0,DIV,0,H1",
+          "selector": "div.page-enter > div.page-scroll > div > h1.page-title",
+          "boundingRect": {
+            "top": 54,
+            "bottom": 90,
+            "left": 20,
+            "right": 392,
+            "width": 372,
+            "height": 36
+          },
+          "snippet": "<h1 class=\"page-title\">",
+          "nodeLabel": "Your library."
+        }
+      ]
+    }
+  },
+  {
+    "route": "pomodoro",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100
+    },
+    "lcpMs": 974.5411376953125,
+    "tbtMs": 0,
+    "cls": 0,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 6.711
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 62.45
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-SPAN",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,0,MAIN,1,DIV,0,DIV,0,SECTION,1,DIV,1,DIV,1,DIV,0,SPAN",
+          "selector": "div.focus-card > div.focus-ring > div > span.focus-time",
+          "boundingRect": {
+            "top": 371,
+            "bottom": 443,
+            "left": 145,
+            "right": 264,
+            "width": 118,
+            "height": 72
+          },
+          "snippet": "<span class=\"focus-time\" role=\"timer\" aria-label=\"25 minutes 00 seconds remaining\">",
+          "nodeLabel": "25:00"
+        }
+      ]
+    }
+  },
+  {
+    "route": "settings",
+    "scores": {
+      "performance": 100,
+      "accessibility": 96,
+      "best-practices": 96
+    },
+    "lcpMs": 1424.5411376953125,
+    "tbtMs": 0,
+    "cls": 0.003356516581185031,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 9.011
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 351.198
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-P",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,0,MAIN,1,DIV,0,DIV,0,DIV,3,DIV,0,FIELDSET,3,SECTION,1,P",
+          "selector": "div#settings-panel-profile > fieldset.settings-fields > section.settings-card > p.settings-hint",
+          "boundingRect": {
+            "top": 663,
+            "bottom": 720,
+            "left": 28,
+            "right": 381,
+            "width": 353,
+            "height": 56
+          },
+          "snippet": "<p class=\"settings-hint settings-location-hint\">",
+          "nodeLabel": "Used for weather. Saved on this device when you save. Location lookup receives …"
+        }
+      ]
+    }
+  },
+  {
+    "route": "reader",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 96
+    },
+    "lcpMs": 1424.5411376953125,
+    "tbtMs": 6.328601837158203,
+    "cls": 0,
+    "lcpElement": {
+      "type": "list",
+      "items": [
+        {
+          "type": "table",
+          "headings": [
+            {
+              "key": "label",
+              "valueType": "text",
+              "label": "Subpart"
+            },
+            {
+              "key": "duration",
+              "valueType": "ms",
+              "label": "Duration"
+            }
+          ],
+          "items": [
+            {
+              "subpart": "timeToFirstByte",
+              "label": "Time to first byte",
+              "duration": 10.997
+            },
+            {
+              "subpart": "elementRenderDelay",
+              "label": "Element render delay",
+              "duration": 809.336
+            }
+          ]
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-P",
+          "path": "1,HTML,1,BODY,1,DIV,1,DIV,0,DIV,0,SECTION,0,ARTICLE,1,P",
+          "selector": "div.reader-article > section.reader-page-slot > article.reader-text-page > p",
+          "boundingRect": {
+            "top": 172,
+            "bottom": 274,
+            "left": 14,
+            "right": 395,
+            "width": 381,
+            "height": 103
+          },
+          "snippet": "<p>",
+          "nodeLabel": "Chapter 1: Mobile reading Line 1. Reading should stay clear of controls and bro…"
+        }
+      ]
+    }
+  }
+]

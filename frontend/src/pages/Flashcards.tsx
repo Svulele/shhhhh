@@ -113,7 +113,7 @@ function FlipCard({ card, onRate }: { card: Card; onRate: (d: 'easy' | 'medium' 
             <div style={{ fontFamily:'var(--font-display)',fontSize:'clamp(15px,2vw,20px)',color:'var(--text-1)',textAlign:'center',lineHeight:1.45,letterSpacing:'-0.2px' }}>
               {card.front}
             </div>
-            <div style={{ marginTop:20,fontSize:11,color:'var(--text-3)',display:'flex',alignItems:'center',gap:5 }}>
+            <div style={{ marginTop:20,fontSize:11,color:'var(--text-3)',display:'flex',alignItems:'center',gap:8 }}>
               <Icon name="library" size={11} />
               Tap to reveal answer
             </div>
@@ -143,7 +143,7 @@ function FlipCard({ card, onRate }: { card: Card; onRate: (d: 'easy' | 'medium' 
         ].map(({ d, label, sub, color, bg, border }) => (
           <button key={d} disabled={!flipped}
             onClick={e => { e.stopPropagation(); onRate(d as any) }}
-            style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'9px 18px',borderRadius:14,background:bg,border:`0.5px solid ${border}`,color,cursor:'pointer',fontFamily:'var(--font-body)',transition:'all .18s',minWidth:80,touchAction:'manipulation' }}>
+            style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'9px 18px',borderRadius:14,background:bg,border:`0.5px solid ${border}`,color,cursor:'pointer',fontFamily:'var(--font-body)',transition:'all .18s',minWidth:80,touchAction:'manipulation' }}>
             <span style={{ fontSize:13,fontWeight:500 }}>{label}</span>
             <span style={{ fontSize:10,opacity:0.7 }}>{sub}</span>
           </button>
@@ -159,7 +159,7 @@ function SRSExplainer() {
   return (
     <div style={{ marginBottom: 16 }}>
       <button onClick={() => setOpen(o => !o)}
-        style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-body)',padding:0,touchAction:'manipulation' }}>
+        style={{ display:'flex',alignItems:'center',gap:8,fontSize:12,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-body)',padding:0,touchAction:'manipulation' }}>
         <Icon name="ask" size={14} />
         How do flashcards work?
         <Icon name="down" size={10} style={{transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s'}} />
@@ -168,7 +168,7 @@ function SRSExplainer() {
         <div style={{ marginTop:12,padding:'16px 18px',background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:14,fontSize:13,color:'var(--text-2)',lineHeight:1.7,fontWeight:300,animation:'fadeUp .2s ease both' }}>
           <p style={{ marginBottom:10 }}>Cards are <strong style={{ fontWeight:500,color:'var(--text-1)' }}>automatically created</strong> when you finish a reading session in your Library. Chatbot reads the same pages you just read and generates questions about them.</p>
           <p style={{ marginBottom:10 }}>When you review a card, you rate how well you knew it:</p>
-          <div style={{ display:'flex',flexDirection:'column',gap:6,margin:'12px 0' }}>
+          <div style={{ display:'flex',flexDirection:'column',gap:8,margin:'12px 0' }}>
             {[
               { c:'#f87171', l:'Hard', d:"You didn't know it — you'll see it again tomorrow" },
               { c:'var(--amber)', l:'Okay', d:"You sort of knew it — back in 3 days" },
@@ -280,13 +280,13 @@ export default function Flashcards() {
 
         {/* Stats pills — only when cards exist */}
         {stats.total > 0 && (
-          <div style={{ display:'flex',gap:7,flexWrap:'wrap',marginBottom:20 }}>
+          <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:20 }}>
             {[
               { l:'Due',      v:stats.due,      c:'var(--accent)' },
               { l:'Unseen',   v:stats.unseen,   c:'var(--text-2)' },
               { l:'Mastered', v:stats.mastered, c:'var(--green)'  },
             ].map(({l,v,c})=>(
-              <div key={l} style={{ display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:999,background:'var(--bg-card)',border:'0.5px solid var(--border)',fontSize:12 }}>
+              <div key={l} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 12px',borderRadius:999,background:'var(--bg-card)',border:'0.5px solid var(--border)',fontSize:12 }}>
                 <span style={{ color:'var(--text-3)' }}>{l}</span>
                 <span style={{ fontWeight:500,color:c }}>{v}</span>
               </div>
@@ -296,7 +296,7 @@ export default function Flashcards() {
 
         {/* Book filter tabs */}
         {allBooks.length > 1 && (
-          <div style={{ display:'flex',gap:5,flexWrap:'wrap',marginBottom:20 }}>
+          <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:20 }}>
             <button onClick={()=>{setSelBook('all');setIdx(0)}} style={{ padding:'5px 13px',borderRadius:999,fontSize:12,cursor:'pointer',border:'0.5px solid var(--border)',fontFamily:'var(--font-body)',background:selBook==='all'?'var(--bg-pill)':'transparent',color:selBook==='all'?'var(--text-1)':'var(--text-3)',transition:'all .18s',touchAction:'manipulation' }}>
               All ({cards.length})
             </button>
@@ -334,7 +334,7 @@ export default function Flashcards() {
           <div>
             {/* Progress + nav */}
             <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
-              <div style={{ display:'flex',gap:5 }}>
+              <div style={{ display:'flex',gap:8 }}>
                 <button onClick={()=>setMode(m=>m==='browse'?'review':'browse')} style={{ padding:'4px 12px',borderRadius:999,border:'0.5px solid var(--border)',background:'transparent',color:mode==='review'?'var(--accent)':'var(--text-3)',fontSize:11,cursor:'pointer',fontFamily:'var(--font-body)',touchAction:'manipulation' }}>
                   {mode==='review'?'Review mode':'Browse mode'}
                 </button>

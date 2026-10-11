@@ -49,14 +49,14 @@ export function PdfPage({ page, bookId, buffer, zoom, active, notes, loadDocumen
     const latestNotes = useRef(notes);
     useEffect(() => { latestNotes.current = notes; }, [notes]);
     useEffect(() => { const parent = root.current?.parentElement; if (!parent)
-        return; const resize = () => setWidth(Math.min(720, Math.max(240, parent.clientWidth))); const frame = requestAnimationFrame(resize); const observer = new ResizeObserver(resize); observer.observe(parent); return () => { cancelAnimationFrame(frame); observer.disconnect(); }; }, []);
+        return; const resize = () => setWidth(Math.min(720, Math.max(1, parent.clientWidth))); const frame = requestAnimationFrame(resize); const observer = new ResizeObserver(resize); observer.observe(parent); return () => { cancelAnimationFrame(frame); observer.disconnect(); }; }, []);
     useEffect(() => { if (!active)
-        return; let cancelled = false, task: PdfTask | undefined, textTask: PdfTask | undefined; void (async () => { try {
+        return; const bitmap = canvas.current; let cancelled = false, task: PdfTask | undefined, textTask: PdfTask | undefined, pageProxy: import('./types').PdfSource | undefined; void (async () => { try {
         const { doc, lib } = await loadDocument(bookId, buffer);
         if (cancelled)
             return;
         setError('');
-        const pg = await doc.getPage(page);
+        const pg = await doc.getPage(page); pageProxy = pg;
         if (cancelled)
             return;
         const base = pg.getViewport({ scale: 1 }), viewport = pg.getViewport({ scale: width * zoom / base.width });
@@ -64,7 +64,7 @@ export function PdfPage({ page, bookId, buffer, zoom, active, notes, loadDocumen
         const cv = canvas.current, container = layer.current;
         if (!cv || !container)
             return;
-        const dpr = Math.min(devicePixelRatio || 1, 1.5);
+        const dpr = Math.min(devicePixelRatio || 1, document.documentElement.classList.contains('lite') ? 1 : 1.5);
         cv.width = Math.floor(viewport.width * dpr);
         cv.height = Math.floor(viewport.height * dpr);
         cv.style.width = `${viewport.width}px`;
@@ -88,8 +88,8 @@ export function PdfPage({ page, bookId, buffer, zoom, active, notes, loadDocumen
     catch (e) {
         if (!cancelled && !(e instanceof Error && e.name === 'RenderingCancelledException'))
             setError('This PDF page could not load. Try switching views or reopening the book.');
-    } })(); return () => { cancelled = true; task?.cancel(); textTask?.cancel(); }; }, [active, page, bookId, buffer, zoom, width, loadDocument]);
+    } })(); return () => { cancelled = true; task?.cancel(); textTask?.cancel(); void task?.promise.catch(() => {}).finally(() => pageProxy?.cleanup?.()); if (bitmap) { bitmap.width = 0; bitmap.height = 0; } }; }, [active, page, bookId, buffer, zoom, width, loadDocument]);
     useEffect(() => { if (layer.current)
         paintHighlights(layer.current, notes.filter(n => n.page === page && n.id.startsWith('hl_'))); }, [notes, page, rendered]);
-    return <div className="reader-pdf-sheet" ref={root} style={{ width: width * zoom, minHeight: width * zoom * ratio }}>{error ? <p className="reader-page-status" role="status">{error}</p> : active ? <><canvas ref={canvas} aria-label={`PDF page ${page}`} role="img"/><div className="pdf-text-layer textLayer" ref={layer} aria-label={`Selectable text for PDF page ${page}`}/></> : <span className="reader-page-status">PDF page {page}</span>}</div>;
+    return <div className="reader-pdf-sheet" ref={root} style={{ width: Math.min(width * zoom, width), minHeight: width * zoom * ratio }}>{error ? <p className="reader-page-status" role="status">{error}</p> : active ? <div style={{ position: 'relative', width: width * zoom, minHeight: width * zoom * ratio }}><canvas ref={canvas} aria-label={`PDF page ${page}`} role="img"/><div className="pdf-text-layer textLayer" ref={layer} aria-label={`Selectable text for PDF page ${page}`}/></div> : <span className="reader-page-status">PDF page {page}</span>}</div>;
 }
