@@ -1,0 +1,114 @@
+[
+  {
+    "width": 667,
+    "height": 375,
+    "visibleHeight": 375,
+    "bottomGap": 8,
+    "clockBottom": 243.5,
+    "dockTop": 315,
+    "font": "135px",
+    "alarm": "none",
+    "scrollHeight": 375,
+    "clientHeight": 375,
+    "buttons": [
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": true
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      }
+    ]
+  },
+  {
+    "width": 844,
+    "height": 390,
+    "visibleHeight": 390,
+    "bottomGap": 8,
+    "clockBottom": 253.703125,
+    "dockTop": 330,
+    "font": "140.4px",
+    "alarm": "none",
+    "scrollHeight": 390,
+    "clientHeight": 390,
+    "buttons": [
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": true
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      },
+      {
+        "width": 36,
+        "height": 36,
+        "hitWidth": 44,
+        "primary": false
+      }
+    ]
+  }
+]
