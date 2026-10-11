@@ -1,0 +1,314 @@
+import Icon from '../components/Icon'
+import { useState, useMemo } from 'react'
+import { deleteExamMark, EXAM_TAGS, loadExamMarks, type ExamMark, type ExamMarkTag } from '../examMarks'
+
+// ── Types ─────────────────────────────────────────────────────
+interface Note { id: string; bookId: string; page: number; text: string; createdAt: number }
+interface Book { id: string; title: string; author: string }
+
+// ── Storage ───────────────────────────────────────────────────
+const loadNotes = (): Note[] => { try { return JSON.parse(localStorage.getItem('shh_notes') ?? '[]') } catch { return [] } }
+const saveNotes = (n: Note[]) => { try { localStorage.setItem('shh_notes', JSON.stringify(n)) } catch {} }
+const loadBooks = (): Book[] => { try { return JSON.parse(localStorage.getItem('shh_books') ?? '[]') } catch { return [] } }
+
+// ── Export helpers ─────────────────────────────────────────────
+function exportAsText(notes: Note[], books: Book[]) {
+  const byBook: Record<string, Note[]> = {}
+  notes.forEach(n => { if (!byBook[n.bookId]) byBook[n.bookId] = []; byBook[n.bookId].push(n) })
+  const lines: string[] = ['SHHHHH — MY STUDY NOTES', `Exported ${new Date().toLocaleDateString()}`, '']
+  Object.entries(byBook).forEach(([bookId, bNotes]) => {
+    const book = books.find(b => b.id === bookId)
+    lines.push(`── ${book?.title ?? 'Unknown book'} ──`)
+    bNotes.sort((a,b)=>a.page-b.page).forEach(n => {
+      lines.push(`p.${n.page}  ${n.text}`)
+    })
+    lines.push('')
+  })
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'shhhhh-notes.txt'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+function exportExamMarks(marks: ExamMark[], books: Book[]) {
+  const lines: string[] = ['SHHHHH — EXAM MARKUP', `Exported ${new Date().toLocaleDateString()}`, '']
+  marks.forEach(mark => {
+    const book = books.find(b => b.id === mark.bookId)
+    lines.push(`[${EXAM_TAGS[mark.tag].label}] ${book?.title ?? mark.bookTitle ?? 'Unknown book'} · p.${mark.page}`)
+    lines.push(mark.text)
+    lines.push('')
+  })
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'shhhhh-exam-markup.txt'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+// ── Main ──────────────────────────────────────────────────────
+export default function Notes() {
+  const [notes,    setNotes]    = useState<Note[]>(loadNotes)
+  const [marks,    setMarks]    = useState<ExamMark[]>(loadExamMarks)
+  const books                   = loadBooks()
+  const [view,     setView]     = useState<'notes' | 'exam'>('notes')
+  const [search,   setSearch]   = useState('')
+  const [selBook,  setSelBook]  = useState<string>('all')
+  const [selTag,   setSelTag]   = useState<'all' | ExamMarkTag>('all')
+  const [sort,     setSort]     = useState<'newest' | 'oldest' | 'page'>('newest')
+  const [editing,  setEditing]  = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+
+  const booksWithNotes = books.filter(b => notes.some(n => n.bookId === b.id))
+  const booksWithMarks = books.filter(b => marks.some(n => n.bookId === b.id))
+
+  const filtered = useMemo(() => {
+    let list = selBook === 'all' ? notes : notes.filter(n => n.bookId === selBook)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(n => n.text.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      if (sort === 'newest') return b.createdAt - a.createdAt
+      if (sort === 'oldest') return a.createdAt - b.createdAt
+      return a.page - b.page
+    })
+  }, [notes, selBook, search, sort])
+
+  const filteredMarks = useMemo(() => {
+    let list = selBook === 'all' ? marks : marks.filter(mark => mark.bookId === selBook)
+    if (selTag !== 'all') list = list.filter(mark => mark.tag === selTag)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(mark => mark.text.toLowerCase().includes(q) || EXAM_TAGS[mark.tag].label.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      if (sort === 'newest') return b.createdAt - a.createdAt
+      if (sort === 'oldest') return a.createdAt - b.createdAt
+      return a.page - b.page
+    })
+  }, [marks, selBook, selTag, search, sort])
+
+  const deleteNote = (id: string) => {
+    const updated = notes.filter(n => n.id !== id)
+    setNotes(updated); saveNotes(updated)
+  }
+
+  const removeMark = (id: string) => {
+    deleteExamMark(id)
+    setMarks(loadExamMarks())
+  }
+
+  const saveEdit = (id: string) => {
+    if (!editText.trim()) return
+    const updated = notes.map(n => n.id === id ? { ...n, text: editText.trim() } : n)
+    setNotes(updated); saveNotes(updated); setEditing(null)
+  }
+
+  const getBook = (bookId: string) => books.find(b => b.id === bookId)
+
+  const fmt = (ts: number) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  return (
+    <div className="page-scroll secondary-workspace">
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(24px,4vw,44px) clamp(16px,4vw,44px) 120px' }}>
+
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom: 20 }}>
+          <div>
+            <h1 className="page-title">Your <em className="title-accent">notes.</em></h1>
+            <div style={{ fontSize:12, color:'var(--text-3)' }}>
+              {notes.length} note{notes.length !== 1 ? 's' : ''} · {marks.length} exam mark{marks.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          {(view === 'notes' ? notes.length > 0 : marks.length > 0) && (
+            <button onClick={() => view === 'notes' ? exportAsText(filtered, books) : exportExamMarks(filteredMarks, books)}
+              style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:999, border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', transition:'all .2s', touchAction:'manipulation' }}>
+              <Icon name="download" size={13} />
+              Export
+            </button>
+          )}
+        </div>
+
+        <div style={{display:'flex',gap:6,marginBottom:14}}>
+          {[
+            { id:'notes', label:`Notes (${notes.length})` },
+            { id:'exam', label:`Exam marks (${marks.length})` },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setView(tab.id as any)}
+              style={{padding:'6px 13px',borderRadius:999,fontSize:12,cursor:'pointer',border:'0.5px solid var(--border)',fontFamily:'var(--font-body)',background:view===tab.id?'var(--bg-pill)':'transparent',color:view===tab.id?'var(--text-1)':'var(--text-3)',transition:'all .18s',touchAction:'manipulation'}}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'notes' && notes.length === 0 ? (
+          /* Empty state */
+          <div style={{ textAlign:'center', padding:'56px 24px' }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+              <Icon name="edit" size={24} style={{color:'var(--accent)'}} />
+            </div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:20, color:'var(--text-1)', marginBottom:8 }}>No notes yet</div>
+            <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:300, lineHeight:1.7, maxWidth:300, margin:'0 auto' }}>
+              Open a book in your Library, tap the <strong style={{ fontWeight:500, color:'var(--text-2)' }}>Notes</strong> button while reading, and jot down anything worth remembering.
+            </div>
+          </div>
+        ) : view === 'exam' && marks.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'56px 24px' }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:'rgba(245,158,11,.12)', border:'0.5px solid rgba(245,158,11,.28)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+              <Icon name="check" size={24} style={{color:'var(--amber)'}} />
+            </div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:20, color:'var(--text-1)', marginBottom:8 }}>No exam marks yet</div>
+            <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:300, lineHeight:1.7, maxWidth:320, margin:'0 auto' }}>
+              Open a book, select important text, then tag it as High yield, Likely exam, Memorize, or Weak area.
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div style={{ position:'relative', marginBottom:14 }}>
+              <Icon name="search" size={14} style={{position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', pointerEvents:'none',color:'var(--text-3)'}} />
+              <input aria-label="Search notes and exam marks" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder={view === 'notes' ? 'Search your notes…' : 'Search exam marks…'}
+                style={{ paddingLeft:36, borderRadius:12, fontSize:13 }}
+              />
+              {search && (
+                <button aria-label="Clear note search" onClick={() => setSearch('')} style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', display:'flex', padding:2 }}>
+                  <Icon name="close" size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Filters row */}
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20, alignItems:'center' }}>
+              {/* Book filter */}
+              <button onClick={() => setSelBook('all')} style={{ padding:'5px 13px', borderRadius:999, fontSize:12, cursor:'pointer', border:'0.5px solid var(--border)', fontFamily:'var(--font-body)', background:selBook==='all'?'var(--bg-pill)':'transparent', color:selBook==='all'?'var(--text-1)':'var(--text-3)', transition:'all .18s', touchAction:'manipulation' }}>
+                All books
+              </button>
+              {(view === 'notes' ? booksWithNotes : booksWithMarks).map(b => (
+                <button key={b.id} onClick={() => setSelBook(b.id)} style={{ padding:'5px 13px', borderRadius:999, fontSize:12, cursor:'pointer', border:'0.5px solid var(--border)', fontFamily:'var(--font-body)', background:selBook===b.id?'var(--bg-pill)':'transparent', color:selBook===b.id?'var(--text-1)':'var(--text-3)', transition:'all .18s', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', touchAction:'manipulation' }}>
+                  {b.title.length > 20 ? b.title.slice(0,20)+'…' : b.title}
+                </button>
+              ))}
+              {view === 'exam' && (
+                <>
+                  <button onClick={() => setSelTag('all')} style={{ padding:'5px 13px', borderRadius:999, fontSize:12, cursor:'pointer', border:'0.5px solid var(--border)', fontFamily:'var(--font-body)', background:selTag==='all'?'var(--bg-pill)':'transparent', color:selTag==='all'?'var(--text-1)':'var(--text-3)', transition:'all .18s', touchAction:'manipulation' }}>
+                    All tags
+                  </button>
+                  {(Object.keys(EXAM_TAGS) as ExamMarkTag[]).map(tag => (
+                    <button key={tag} onClick={() => setSelTag(tag)} style={{ padding:'5px 13px', borderRadius:999, fontSize:12, cursor:'pointer', border:`0.5px solid ${selTag===tag?EXAM_TAGS[tag].border:'var(--border)'}`, fontFamily:'var(--font-body)', background:selTag===tag?EXAM_TAGS[tag].bg:'transparent', color:selTag===tag?EXAM_TAGS[tag].color:'var(--text-3)', transition:'all .18s', touchAction:'manipulation' }}>
+                      {EXAM_TAGS[tag].label}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {/* Spacer */}
+              <div style={{ flex:1 }}/>
+
+              {/* Sort */}
+              <select aria-label="Sort notes" value={sort} onChange={e => setSort(e.target.value as any)}
+                style={{ padding:'5px 10px', borderRadius:999, fontSize:11, cursor:'pointer', border:'0.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-2)', fontFamily:'var(--font-body)', outline:'none' }}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="page">By page</option>
+              </select>
+            </div>
+
+            {/* No results */}
+            {(view === 'notes' ? filtered.length : filteredMarks.length) === 0 && (
+              <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13 }}>
+                No {view === 'notes' ? 'notes' : 'exam marks'} match "{search}"
+              </div>
+            )}
+
+            {/* Note cards */}
+            {view === 'notes' ? <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {filtered.map(note => {
+                const book = getBook(note.bookId)
+                const isEditing = editing === note.id
+                return (
+                  <div key={note.id} style={{ background:'var(--bg-card)', border:'0.5px solid var(--border)', borderRadius:16, padding:'16px 18px', transition:'border-color .2s' }}>
+                    {/* Top meta row */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+                        <span style={{ fontSize:10, fontWeight:500, color:'var(--accent)', background:'var(--accent-soft)', padding:'2px 8px', borderRadius:999, whiteSpace:'nowrap' }}>
+                          p.{note.page}
+                        </span>
+                        {book && (
+                          <span style={{ fontSize:11, color:'var(--text-3)', fontWeight:300, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {book.title.length > 28 ? book.title.slice(0,28)+'…' : book.title}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:2, flexShrink:0, marginLeft:8 }}>
+                        <span style={{ fontSize:10, color:'var(--text-3)', marginRight:6 }}>{fmt(note.createdAt)}</span>
+                        {/* Edit button */}
+                        <button aria-label="Edit note" onClick={() => { setEditing(note.id); setEditText(note.text) }}
+                          style={{ width:28, height:28, borderRadius:8, border:'none', background:'transparent', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .18s', touchAction:'manipulation' }}
+                          onMouseEnter={e => { e.currentTarget.style.background='var(--bg-pill)'; e.currentTarget.style.color='var(--text-1)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-3)' }}>
+                          <Icon name="edit" size={12} />
+                        </button>
+                        {/* Delete button */}
+                        <button aria-label="Delete note" onClick={() => deleteNote(note.id)}
+                          style={{ width:28, height:28, borderRadius:8, border:'none', background:'transparent', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .18s', touchAction:'manipulation' }}
+                          onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,.1)'; e.currentTarget.style.color='#f87171' }}
+                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-3)' }}>
+                          <Icon name="trash" size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Note text or edit field */}
+                    {isEditing ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        <textarea aria-label="Edit note text" value={editText} onChange={e => setEditText(e.target.value)}
+                          onKeyDown={e => { if (e.key==='Enter'&&(e.metaKey||e.ctrlKey)) saveEdit(note.id) }}
+                          style={{ fontSize:14, fontWeight:300, lineHeight:1.65, resize:'none', minHeight:80, borderRadius:10 }}
+                          autoFocus/>
+                        <div style={{ display:'flex', gap:7 }}>
+                          <button onClick={() => setEditing(null)} style={{ flex:1, padding:'7px', borderRadius:8, border:'0.5px solid var(--border)', background:'transparent', color:'var(--text-2)', fontSize:12, cursor:'pointer', fontFamily:'var(--font-body)', touchAction:'manipulation' }}>Cancel</button>
+                          <button onClick={() => saveEdit(note.id)} style={{ flex:1, padding:'7px', borderRadius:8, background:'var(--accent-soft)', border:'0.5px solid var(--border-active)', color:'var(--accent)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)', touchAction:'manipulation' }}>Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:14, color:'var(--text-1)', fontWeight:300, lineHeight:1.65 }}>
+                        {note.text}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div> : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {filteredMarks.map(mark => {
+                const book = getBook(mark.bookId)
+                const tag = EXAM_TAGS[mark.tag]
+                return (
+                  <div key={mark.id} style={{ background:'var(--bg-card)', border:`0.5px solid ${tag.border}`, borderRadius:16, padding:'16px 18px' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:10 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+                        <span style={{ fontSize:10, fontWeight:500, color:tag.color, background:tag.bg, border:`0.5px solid ${tag.border}`, padding:'2px 8px', borderRadius:999, whiteSpace:'nowrap' }}>
+                          {tag.label}
+                        </span>
+                        <span style={{ fontSize:10, color:'var(--text-3)', whiteSpace:'nowrap' }}>p.{mark.page}</span>
+                        {book && <span style={{ fontSize:11, color:'var(--text-3)', fontWeight:300, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{book.title.length > 28 ? book.title.slice(0,28)+'…' : book.title}</span>}
+                      </div>
+                      <button aria-label="Delete exam mark" onClick={() => removeMark(mark.id)}
+                        style={{ width:28, height:28, borderRadius:8, border:'none', background:'transparent', color:'var(--text-3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, touchAction:'manipulation' }}>
+                        <Icon name="trash" size={12} />
+                      </button>
+                    </div>
+                    <div style={{ fontSize:14, color:'var(--text-1)', fontWeight:300, lineHeight:1.65 }}>{mark.text}</div>
+                  </div>
+                )
+              })}
+            </div>}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
