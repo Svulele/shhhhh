@@ -3,15 +3,16 @@ import { useInputMode, useIsStandalone } from '../useInput';
 
 export default function DeviceTools() {
   const mode = useInputMode(), standalone = useIsStandalone();
-  const [tip, setTip] = useState(false), [error, setError] = useState('');
+  const [tip, setTip] = useState(() => {
+    try { return !localStorage.getItem('shh_home_tip_dismissed') && !sessionStorage.getItem('shh_home_tip_seen'); }
+    catch { return false; }
+  });
+  const [error, setError] = useState('');
   useEffect(() => {
-    if (mode !== 'touch' || standalone) return;
-    try {
-      if (localStorage.getItem('shh_home_tip_dismissed') || sessionStorage.getItem('shh_home_tip_seen')) return;
-      sessionStorage.setItem('shh_home_tip_seen', '1');
-      setTip(true);
-    } catch { /* Storage unavailable: omit the tip rather than repeat it. */ }
-  }, [mode, standalone]);
+    if (tip && mode === 'touch' && !standalone) {
+      try { sessionStorage.setItem('shh_home_tip_seen', '1'); } catch { /* Storage availability was checked before showing. */ }
+    }
+  }, [tip, mode, standalone]);
   if (mode !== 'touch') return null;
   const dismiss = () => { setTip(false); try { localStorage.setItem('shh_home_tip_dismissed', '1'); } catch { /* session flag still prevents repeats */ } };
   const share = async () => {
