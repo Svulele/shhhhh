@@ -2,6 +2,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/chat",
+      "destination": "https://shhhhh-zhgy.onrender.com/api/chat"
+    },
+    {
       "source": "/privacy",
       "destination": "/index.html"
     },

@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { aiFetch, API_URL } from '../api'
 import Icon from '../components/Icon'
 import { useState, useEffect } from 'react'
@@ -264,7 +265,7 @@ export default function Flashcards() {
             <h1 className="page-title">Your <em className="title-accent">flashcards.</em></h1>
             <div style={{ fontSize:12,color:'var(--text-3)' }}>
               {stats.total > 0
-                ? `${stats.total} card${stats.total!==1?'s':''} · ${stats.due > 0 ? `${stats.due} due` : 'all caught up'}`
+                ? `${plural(stats.total, 'card')} · ${stats.due > 0 ? `${stats.due} due` : 'all caught up'}`
                 : 'No cards yet'}
             </div>
           </div>
@@ -319,7 +320,7 @@ export default function Flashcards() {
             </div>
             <div style={{ fontFamily:'var(--font-display)',fontSize:24,color:'var(--text-1)',marginBottom:8,letterSpacing:'-0.5px' }}>Session done</div>
             <div style={{ fontSize:13,color:'var(--text-3)',marginBottom:24,lineHeight:1.6,fontWeight:300 }}>
-              {stats.mastered > 0 ? `${stats.mastered} mastered · ` : ''}{dueQueue.length} cards will come back based on how you rated them.
+              {stats.mastered > 0 ? `${stats.mastered} mastered · ` : ''}{plural(dueQueue.length, 'card')} will come back based on how you rated them.
             </div>
             <div style={{ display:'flex',gap:10,justifyContent:'center' }}>
               <button onClick={()=>{setIdx(0);setDone(false);setMode('review')}} style={{ padding:'10px 24px',borderRadius:999,background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',color:'white',fontSize:14,fontWeight:500,cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 14px var(--accent-glow)',touchAction:'manipulation' }}>

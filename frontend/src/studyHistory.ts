@@ -1,3 +1,4 @@
+import { plural } from './plural.ts'
 import { hasAIConsent } from './privacyConsent.ts'
 export type StudyEventType = 'reading' | 'focus' | 'flashcard'
 
@@ -192,7 +193,7 @@ export function summarizeStudyJourney() {
     .map(b => `${b.title}: p.${Math.max(1, b.currentPage ?? 1)} of ${b.totalPages ?? '?'}`)
 
   const weeklyText = weekPages || weekFocus || weekReviews || weekExamMarks
-    ? `This week you logged ${weekPages} page${weekPages === 1 ? '' : 's'}, reviewed ${weekReviews} flashcard${weekReviews === 1 ? '' : 's'}, saved ${weekExamMarks} exam mark${weekExamMarks === 1 ? '' : 's'}, and studied for ${fmtHours(weekFocus)}. ${topBook ? `Most of your reading was in ${topBook[0]}.` : ''} ${weakestArea ? `Your weakest area is ${weakestArea}.` : 'No weak area yet. Mark weak content or rate a few cards and this will sharpen.'}`.trim()
+    ? `This week you logged ${plural(weekPages, 'page')}, reviewed ${plural(weekReviews, 'flashcard')}, saved ${plural(weekExamMarks, 'exam mark')}, and studied for ${fmtHours(weekFocus)}. ${topBook ? `Most of your reading was in ${topBook[0]}.` : ''} ${weakestArea ? `Your weakest area is ${weakestArea}.` : 'No weak area yet. Mark weak content or rate a few cards and this will sharpen.'}`.trim()
     : 'Your weekly summary is ready to fill in. Read a few pages, mark exam content, review some cards, or run a focus session and Shhhhh will start connecting the dots.'
 
   return {
@@ -256,7 +257,7 @@ Flashcards reviewed this week: ${s.weekReviews}
 Notes created this week: ${s.weekNotes}
 Exam marks saved this week: ${s.weekExamMarks}
 Study time this week: ${fmtHours(s.weekFocus)}
-Last 30 days: ${s.monthPages} pages, ${s.monthReviews} card reviews, ${s.monthExamMarks} exam marks, ${fmtHours(s.monthFocus)} study time
+Last 30 days: ${plural(s.monthPages, 'page')}, ${plural(s.monthReviews, 'card review')}, ${plural(s.monthExamMarks, 'exam mark')}, ${fmtHours(s.monthFocus)} study time
 All-time known pages covered: ${s.allTimePages}
 Pages still to do: ${s.remainingPages}
 Weakest area: ${summary.weakestArea ?? 'Not enough hard-rated cards yet'}

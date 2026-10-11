@@ -97,7 +97,7 @@ async function callAI(msgs:Msg[],sys:string,onChunk:(t:string)=>void,onDone:()=>
     if (signal.aborted) return
     onChunk(text)
     onDone()
-  } catch(e:any){if(signal.aborted)return;onErr(e?.name==='TimeoutError'?'The AI server took too long to respond. Please try again.':e?.message?.includes('fetch')?'Could not reach the AI server. Check your connection and try again shortly.':`Error: ${e?.message}`)}
+  } catch(e:any){if(signal.aborted)return;onErr(e?.name==='TimeoutError'?'The AI server took too long to respond. Please try again.':e instanceof TypeError || /fetch|load failed|network/i.test(e?.message??'')?'Could not reach your study assistant. Check your connection, then tap Retry.':e?.message||'Something went wrong. Please try again.')}
 }
 
 const speak=(t:string)=>{
@@ -187,7 +187,7 @@ function ChatComposer({initial,onSend,streaming,draftKey}:{initial:string;onSend
               <button aria-label={listening?'Stop voice input':'Start voice input'} onClick={toggleVoice} title={listening?'Stop':'Speak'} style={{width:40,height:40,flexShrink:0,borderRadius:'50%',border:`1px solid ${listening?'var(--border-active)':'var(--border)'}`,background:listening?'var(--accent-soft)':'var(--bg-card)',color:listening?'var(--accent)':'var(--text-3)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s'}}>
                 <Icon name="microphone" size={14} />
               </button>
-              <textarea aria-label="Ask a study question" ref={inputRef} value={input} onChange={e=>change(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}}} placeholder={listening?'Listening…':'Ask a question…'} rows={1} disabled={streaming||listening} style={{flex:1,minHeight:40,maxHeight:120,resize:'none',fontSize:14,fontWeight:300,borderRadius:12,padding:'10px 14px',lineHeight:1.5}}/>
+              <textarea id="shh-study-question" name="studyQuestion" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" enterKeyHint="send" aria-label="Ask a study question" ref={inputRef} value={input} onChange={e=>change(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}}} placeholder={listening?'Listening…':'Ask a question…'} rows={1} disabled={listening} style={{flex:1,minHeight:40,maxHeight:120,resize:'none',fontSize:14,fontWeight:300,borderRadius:12,padding:'10px 14px',lineHeight:1.5}}/>
               <button aria-label="Send question" onClick={()=>submit()} disabled={!input.trim()||streaming} style={{width:40,height:40,flexShrink:0,borderRadius:'50%',background:'linear-gradient(135deg,var(--accent),#7b6cf6)',border:'none',cursor:(!input.trim()||streaming)?'default':'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 14px var(--accent-glow)',opacity:(!input.trim()||streaming)?0.4:1,transition:'all .2s'}}>
                 <Icon name="send" size={14} />
               </button>
@@ -204,6 +204,7 @@ export default function Chat({material}:{material:any}) {
   const [messages, setMessages] = useState<Msg[]>(restoredSession?.messages??[])
   const [streaming,setStreaming]= useState(false)
   const [streamId, setStreamId] = useState<string|null>(null)
+  const retryRequest = useRef<{messages:Msg[];system:string;sid:string;content:string;context:ReadingContext|null}|null>(null)
   const [error,    setError]    = useState<string|null>(null)
   const [showHist, setShowHist] = useState(false)
   const [curVibe,  setCurVibe]  = useState(()=>getProf().vibe??'balanced')
@@ -248,21 +249,24 @@ export default function Chat({material}:{material:any}) {
   const rc=readingContext
   const newS=():Sess=>({id:Date.now().toString(),title:rc?`Chat — ${rc.title}`:'New chat',messages:[],createdAt:Date.now(),bookCtx:rc?.title,vibe:curVibe,readingContext:rc ? {...rc,fromPage,toPage} : null})
 
-  const sendMsg=async(text:string)=>{
+  const sendMsg=async(text:string,retry=false)=>{
     const content=text.trim(); if(!content||pending.current) return false
+    if(!retry)retryRequest.current=null
     pending.current=true; setStreaming(true);setThinking(true)
     controller.current=new AbortController()
     let sys:string
-    try { sys=await buildSys(readingContext,fromPage,toPage) } catch(error) {
+    try { sys=retry&&retryRequest.current ? retryRequest.current.system : await buildSys(readingContext,fromPage,toPage) } catch(error) {
       setError(error instanceof Error ? error.message : 'Could not read the selected pages.');setStreaming(false);setThinking(false);pending.current=false;return false
     }
     if(controller.current.signal.aborted){pending.current=false;return false}
     setError(null)
     const userMsg:Msg={id:Date.now().toString(),role:'user',content,ts:Date.now()}
-    const updated=[...messages,userMsg]; setMessages(updated)
-    let sid=activeId
+    const updated=retry&&retryRequest.current ? retryRequest.current.messages : [...messages,userMsg]; setMessages(updated)
+    let sid=retry&&retryRequest.current ? retryRequest.current.sid : activeId
     if(!sid){const s=newS();s.messages=updated;setSessions(p=>[s,...p]);setActiveId(s.id);sid=s.id}
     setSessions(prev=>prev.map(s=>s.id===sid?{...s,messages:updated}:s))
+    const requestContext = retry&&retryRequest.current ? retryRequest.current.context : rc ? {...rc,fromPage,toPage} : null
+    retryRequest.current={messages:updated,system:sys,sid:sid!,content,context:requestContext}
     const aiId=(Date.now()+1).toString(), aiMsg:Msg={id:aiId,role:'assistant',content:'',ts:Date.now()}
     setMessages(m=>[...m,aiMsg]); setStreaming(true); setStreamId(aiId); setThinking(true)
     let full=''
@@ -275,8 +279,8 @@ export default function Chat({material}:{material:any}) {
       ()=>{
         setStreaming(false);setStreamId(null);setThinking(false)
         const fin=[...updated,{...aiMsg,content:full}];setMessages(fin)
-        setSessions(prev=>prev.map(s=>s.id===sid?{...s,messages:fin,title:content.slice(0,40),readingContext:rc ? {...rc,fromPage,toPage} : null}:s))
-        pending.current=false
+        setSessions(prev=>prev.map(s=>s.id===sid?{...s,messages:fin,title:content.slice(0,40),readingContext:requestContext}:s))
+        pending.current=false;retryRequest.current=null
       },
       err=>{pending.current=false;setStreaming(false);setStreamId(null);setThinking(false);setError(err);setMessages(m=>m.filter(x=>x.id!==aiId))},
       controller.current.signal
@@ -391,7 +395,7 @@ export default function Chat({material}:{material:any}) {
             <MessageList messages={messages} streaming={streaming} streamId={streamId}/>
             {error&&(
               <div style={{margin:'12px 0',padding:'12px 16px',borderRadius:12,background:'rgba(239,68,68,.08)',border:'0.5px solid rgba(239,68,68,.2)',fontSize:13,color:'#fca5a5',lineHeight:1.6}}>
-                {error}<button onClick={()=>setError(null)} style={{display:'block',marginTop:8,fontSize:12,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',padding:0,fontFamily:'var(--font-body)'}}>Dismiss</button>
+                <span role="alert">{error}</span>{retryRequest.current&&<button className="ui-button" disabled={streaming} onClick={()=>void sendMsg(retryRequest.current!.content,true)}>Retry</button>}<button onClick={()=>setError(null)} style={{display:'block',marginTop:8,fontSize:12,color:'var(--text-3)',background:'none',border:'none',cursor:'pointer',padding:0,fontFamily:'var(--font-body)'}}>Dismiss</button>
               </div>
             )}
             {thinking&&(

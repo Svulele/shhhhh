@@ -1,7 +1,8 @@
+declare const __SHH_PREVIEW__: boolean
 import { supabase } from './supabase'
 import { ensureAIConsent } from './privacyConsent'
 
-export const API_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://shhhhh-zhgy.onrender.com' : 'http://127.0.0.1:8000')).replace(/\/+$/, '')
+export const API_URL = __SHH_PREVIEW__ ? '' : (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://shhhhh-zhgy.onrender.com' : 'http://127.0.0.1:8000')).replace(/\/+$/, '')
 export function publicApiHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', 'X-Supabase-Key': import.meta.env.VITE_SUPABASE_ANON_KEY || '' }
 }

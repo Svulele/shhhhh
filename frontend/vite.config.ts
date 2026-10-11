@@ -8,7 +8,7 @@ const buildIdentity = {gitHash, shortHash:gitHash.slice(0,7), builtAt:new Date()
 // https://vite.dev/config/
 export default defineConfig({
   envDir: '..',
-  define: { __SHH_BUILD__: JSON.stringify(buildIdentity) },
+  define: { __SHH_BUILD__: JSON.stringify(buildIdentity), __SHH_PREVIEW__: JSON.stringify(process.env.VERCEL_ENV === 'preview') },
   plugins: [react(), {
     name: 'preload-critical-font',
     transformIndexHtml: {

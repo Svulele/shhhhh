@@ -1,0 +1,230 @@
+[
+  {
+    "stage": "before",
+    "width": 360,
+    "height": 640,
+    "card": {
+      "badge": {
+        "x": 119.890625,
+        "y": 382.0625,
+        "width": 42.109375,
+        "height": 18,
+        "top": 382.0625,
+        "right": 162,
+        "bottom": 400.0625,
+        "left": 119.890625
+      },
+      "menu": {
+        "x": 129,
+        "y": 379.0625,
+        "width": 36,
+        "height": 36,
+        "top": 379.0625,
+        "right": 165,
+        "bottom": 415.0625,
+        "left": 129
+      },
+      "overlap": true,
+      "toast": false
+    },
+    "stats": [
+      {
+        "top": 148,
+        "height": 74.578125,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 74.578125,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 74.578125,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      }
+    ],
+    "focus": {
+      "top": 170.8125,
+      "bottom": 212.8125,
+      "tabsTop": 504.7991943359375,
+      "visible": true
+    },
+    "keyboard": {
+      "open": false,
+      "tabs": "grid",
+      "header": "flex",
+      "messages": 90,
+      "composerBottom": 200,
+      "viewport": 200,
+      "attributes": {
+        "id": null,
+        "name": null,
+        "autocomplete": null,
+        "autocapitalize": null,
+        "autocorrect": null,
+        "enterkeyhint": null
+      }
+    },
+    "restored": true,
+    "errors": []
+  },
+  {
+    "stage": "before",
+    "width": 390,
+    "height": 844,
+    "card": {
+      "badge": {
+        "x": 134.890625,
+        "y": 382.0625,
+        "width": 42.109375,
+        "height": 18,
+        "top": 382.0625,
+        "right": 177,
+        "bottom": 400.0625,
+        "left": 134.890625
+      },
+      "menu": {
+        "x": 144,
+        "y": 379.0625,
+        "width": 36,
+        "height": 36,
+        "top": 379.0625,
+        "right": 180,
+        "bottom": 415.0625,
+        "left": 144
+      },
+      "overlap": true,
+      "toast": false
+    },
+    "stats": [
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      }
+    ],
+    "focus": {
+      "top": 546.8125,
+      "bottom": 588.8125,
+      "tabsTop": 652,
+      "visible": true
+    },
+    "keyboard": {
+      "open": false,
+      "tabs": "grid",
+      "header": "flex",
+      "messages": 196,
+      "composerBottom": 352,
+      "viewport": 404,
+      "attributes": {
+        "id": null,
+        "name": null,
+        "autocomplete": null,
+        "autocapitalize": null,
+        "autocorrect": null,
+        "enterkeyhint": null
+      }
+    },
+    "restored": true,
+    "errors": []
+  },
+  {
+    "stage": "before",
+    "width": 430,
+    "height": 932,
+    "card": {
+      "badge": {
+        "x": 154.890625,
+        "y": 382.0625,
+        "width": 42.109375,
+        "height": 18,
+        "top": 382.0625,
+        "right": 197,
+        "bottom": 400.0625,
+        "left": 154.890625
+      },
+      "menu": {
+        "x": 164,
+        "y": 379.0625,
+        "width": 36,
+        "height": 36,
+        "top": 379.0625,
+        "right": 200,
+        "bottom": 415.0625,
+        "left": 164
+      },
+      "overlap": true,
+      "toast": false
+    },
+    "stats": [
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      },
+      {
+        "top": 148,
+        "height": 59.1875,
+        "value": "18px",
+        "label": "14.5px",
+        "icon": 24
+      }
+    ],
+    "focus": {
+      "top": 546.8125,
+      "bottom": 588.8125,
+      "tabsTop": 740,
+      "visible": true
+    },
+    "keyboard": {
+      "open": false,
+      "tabs": "grid",
+      "header": "flex",
+      "messages": 284,
+      "composerBottom": 440,
+      "viewport": 492,
+      "attributes": {
+        "id": null,
+        "name": null,
+        "autocomplete": null,
+        "autocapitalize": null,
+        "autocorrect": null,
+        "enterkeyhint": null
+      }
+    },
+    "restored": true,
+    "errors": []
+  }
+]

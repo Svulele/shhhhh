@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import WindowItem from '../components/WindowItem'
 import Icon from '../components/Icon'
 import { useState, useMemo, useDeferredValue } from 'react'
@@ -122,7 +123,7 @@ export default function Notes() {
           <div>
             <h1 className="page-title">Your <em className="title-accent">notes.</em></h1>
             <div style={{ fontSize:12, color:'var(--text-3)' }}>
-              {notes.length} note{notes.length !== 1 ? 's' : ''} · {marks.length} exam mark{marks.length !== 1 ? 's' : ''}
+              {plural(notes.length, 'note')} · {plural(marks.length, 'exam mark')}
             </div>
           </div>
           {(view === 'notes' ? notes.length > 0 : marks.length > 0) && (

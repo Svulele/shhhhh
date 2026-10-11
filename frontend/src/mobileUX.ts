@@ -1,3 +1,4 @@
+import { keyboardViewport } from './keyboardViewport'
 import { startFrameProbe } from './frameProbe'
 import { initInputMode } from './useInputMode'
 let dispose: (() => void) | undefined
@@ -16,17 +17,20 @@ export function installMobileUX() {
   motion.addEventListener('change', capabilities)
   nav.connection?.addEventListener?.('change', capabilities)
   let frame = 0, focusFrame = 0, scrollTimer: ReturnType<typeof setTimeout>, focusTimer: ReturnType<typeof setTimeout>
+  let viewportBaseline = {width:visualViewport?.width ?? innerWidth,height:visualViewport?.height ?? innerHeight}
   const viewport = () => {
     cancelAnimationFrame(frame)
     frame = requestAnimationFrame(() => {
       const vv = window.visualViewport
       const field = document.activeElement?.matches('input:not([type=checkbox]):not([type=radio]),textarea,[contenteditable=true]')
-      const kb = field ? Math.max(0, innerHeight - (vv?.height ?? innerHeight) - (vv?.offsetTop ?? 0)) : 0
+      const keyboard = keyboardViewport(viewportBaseline,{width:vv?.width ?? innerWidth,height:vv?.height ?? innerHeight})
+      viewportBaseline = keyboard.baseline
+      const kb = keyboard.open ? keyboard.drop : 0
       root.style.setProperty('--kb', `${kb}px`)
       root.style.setProperty('--viewport-bottom', `${Math.max(0, innerHeight - (vv?.height ?? innerHeight) - (vv?.offsetTop ?? 0))}px`)
       root.style.setProperty('--viewport-top', `${vv?.offsetTop ?? 0}px`)
       root.style.setProperty('--viewport-height', `${vv?.height ?? innerHeight}px`)
-      root.classList.toggle('keyboard-open', Boolean(field && (kb > 100 || (vv?.height ?? innerHeight) < screen.height * .65)))
+      root.classList.toggle('keyboard-open', keyboard.open)
       if (field && kb > 100) { cancelAnimationFrame(focusFrame); focusFrame = requestAnimationFrame(() => {
         const active = document.activeElement as HTMLElement | null
         if (!active?.closest('.chat-page')) active?.scrollIntoView({ block: 'center', behavior: 'auto' })

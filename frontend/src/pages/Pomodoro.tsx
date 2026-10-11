@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { keyboardShortcutsEnabled } from '../useInputMode'
 import useOverlayBack from '../components/useOverlayBack'
 import { aiFetch, API_URL } from '../api'
@@ -218,8 +219,8 @@ function FocusMode({ sound, onSound, onExit }: {
     previewTimer.current=setTimeout(()=>{stopAlarm();previewTimer.current=null},1200)
   }
   return createPortal(<div className="fullscreen-focus" ref={ref} role="dialog" aria-modal="true" aria-label="Full screen focus timer">
-    <div className="fullscreen-top"><span>{t.sessions} <small>sessions</small></span><div className="mode-segment">{(['work','break'] as TimerMode[]).map(m=><button key={m} aria-pressed={t.mode===m} onClick={()=>timerStore.switchMode(m)}>{m==='work'?'Focus':'Break'}</button>)}</div><button className="round-button" aria-label="Close full screen" onClick={onExit}><Icon name="close" /></button></div>
-    <div className="fullscreen-clock"><div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`}>{mm}:{ss}</div><div className="fullscreen-progress" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${pct}%`}} /></div><p>{t.mode==='work'?'Nothing else needs your attention right now.':'Breathe. Let your mind wander.'}</p></div>
+    <div className="fullscreen-top"><span>{plural(t.sessions, 'session')}</span><div className="mode-segment">{(['work','break'] as TimerMode[]).map(m=><button key={m} aria-pressed={t.mode===m} onClick={()=>timerStore.switchMode(m)}>{m==='work'?'Focus':'Break'}</button>)}</div><button className="round-button" aria-label="Close full screen" onClick={onExit}><Icon name="close" /></button></div>
+    <div className="fullscreen-clock"><div role="timer" aria-label={`${plural(Number(mm), 'minute')} ${plural(Number(ss), 'second')} remaining`}>{mm}:{ss}</div><div className="fullscreen-progress" role="progressbar" aria-label="Session progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${pct}%`}} /></div><p>{t.mode==='work'?'Nothing else needs your attention right now.':'Breathe. Let your mind wander.'}</p></div>
     <div className="fullscreen-bottom"><div className="fullscreen-dock"><button className="round-button primary" aria-label={t.running?'Pause session':'Start session'} onClick={timerStore.toggle}><Icon name={t.running?'pause':'play'} size={26} /></button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><Icon name="reset" /></button><span className="dock-divider" />{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="round-button" key={k} title={n} aria-label={n} aria-pressed={sound===k} onClick={()=>onSound(k)}><Icon name={k} /></button>)}<button className="round-button" aria-label="Mute ambient sound" aria-pressed={!sound} onClick={()=>onSound(null)}><Icon name="mute" /></button></div><div className="alarm-row"><span className="eyebrow">Alarm</span>{(['bell','chime','beep'] as const).map(type=><button className="ui-button" key={type} aria-pressed={t.alarmType===type} onClick={()=>preview(type)}>{type[0].toUpperCase()+type.slice(1)}</button>)}</div><small className="fullscreen-help kbd-hint">Space to start or pause · Esc to return</small></div>
   </div>,document.body)
 }
@@ -243,7 +244,7 @@ function FocusClock() {
   const circ = 2 * Math.PI * 134
   return (<div className={`focus-ring ${t.running?'running':''}`}>
             <svg viewBox="0 0 300 300" aria-hidden="true"><defs><linearGradient id="focus-gradient"><stop stopColor="#7c6cff"/><stop offset="1" stopColor="#c79bff"/></linearGradient></defs><circle cx="150" cy="150" r="134" fill="none" stroke="var(--soft)" strokeWidth="9"/><circle cx="150" cy="150" r="134" fill="none" stroke="url(#focus-gradient)" strokeWidth="9" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)} /></svg>
-            <div><span className="focus-time" role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`}>{mm}:{ss}</span><span className="focus-mode-label">{t.mode==='work'?'Stay in your flow':'Take a breath'}</span></div>
+            <div><span className="focus-time" role="timer" aria-label={`${plural(Number(mm), 'minute')} ${plural(Number(ss), 'second')} remaining`}>{mm}:{ss}</span><span className="focus-mode-label">{t.mode==='work'?'Stay in your flow':'Take a breath'}</span></div>
           </div>)
 }
 
@@ -331,7 +332,7 @@ export default function Pomodoro() {
           </div>
           <FocusClock />
           <div className="focus-controls"><button className="ui-button primary" onClick={timerStore.toggle}>{t.running?<PauseIcon />:<PlayIcon />}{t.running?'Pause':'Start'} session</button><button className="round-button" aria-label="Reset timer" onClick={timerStore.reset}><ResetIcon /></button></div>
-          <p className="focus-session-count">{t.sessions} focus session{t.sessions===1?'':'s'} completed</p>
+          <p className="focus-session-count">{plural(t.sessions, 'focus session')} completed</p>
           <div className="ambient-row">{[{k:'rain',n:'Rain'},{k:'forest',n:'Forest'},{k:'cafe',n:'Café'},{k:'white',n:'White noise'}].map(({k,n})=><button className="ui-button" key={k} aria-pressed={sound===k} onClick={()=>handleSound(k)}><Icon name={k} size={18} />{n}</button>)}<button className="round-button" aria-label="Mute ambient sound" onClick={()=>handleSound(null)}><Icon name="mute" size={18} /></button></div>
           <div className="alarm-row"><span className="eyebrow">End alarm</span>{(['bell','chime','beep'] as const).map(v=><button className="ui-button" key={v} aria-pressed={t.alarmType===v} onClick={()=>timerStore.setAlarmType(v)}><Icon name="bell" size={16} />{v[0].toUpperCase()+v.slice(1)}</button>)}</div>
         </div>

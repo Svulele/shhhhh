@@ -88,10 +88,10 @@ async function generatePlan(): Promise<DayPlan> {
   const context = `
 User: ${profile.name || 'student'}, vibe: ${profile.vibe || 'balanced'}, goals: ${profile.goals?.join(', ') || 'general study'}
 Streak: ${plural(streak, 'day')}
-Books in progress: ${inProgress.map((b: any) => `"${b.title}" (${b.currentPage}/${b.totalPages} pages, ${Math.round(b.currentPage/b.totalPages*100)}%)`).join(', ') || 'none'}
+Books in progress: ${inProgress.map((b: any) => `"${b.title}" (${b.currentPage}/${plural(b.totalPages, 'page')}, ${Math.round(b.currentPage/b.totalPages*100)}%)`).join(', ') || 'none'}
 ${booksWithGoals.length ? `Reading goals:\n${booksWithGoals.join('\n')}` : ''}
 Flashcards due for review: ${dueCards}
-Study time today: ${Math.round(todaySecs / 60)} minutes
+Study time today: ${plural(Math.round(todaySecs / 60), 'minute')}
 Study time this week: ${Math.round(weekSecs / 3600 * 10) / 10} hours
 Time of day: ${greeting.toLowerCase()}
 `.trim()
@@ -177,7 +177,7 @@ Respond ONLY with JSON, no markdown:
       fallbackItems.push({
         id: 'p1', type: 'review',
         title: 'Review flashcards',
-        detail: `${dueCards} card${dueCards > 1 ? 's' : ''} due today`,
+        detail: `${plural(dueCards, 'card')} due today`,
         duration: 15, page: 'flashcards', done: false,
       })
     }

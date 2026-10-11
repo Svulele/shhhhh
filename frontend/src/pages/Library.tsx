@@ -317,9 +317,9 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
 
       <div className="library-book-hover" style={{position:'relative'}}>
         <button onClick={onClick} style={{background:'var(--bg-card)',border:'0.5px solid var(--border)',borderRadius:16,overflow:'hidden',cursor:'pointer',textAlign:'left',width:'100%',transition:'all .22s',transform:'none',boxShadow:'none'}}>
-          <div style={{height:110,background:book.coverGradient,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+          <div className="library-cover" style={{height:110,background:'linear-gradient(135deg,var(--soft),var(--bg-card))',display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
             <Icon name="library" size={26} />
-            <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.25)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'rgba(255,255,255,.9)',fontWeight:500}}>{pct}%</span>
+            <span className="library-progress" style={{position:'absolute',top:12,left:12,background:'rgba(0,0,0,.25)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'var(--ink)',fontWeight:500}}>{pct}%</span>
             {!hasPdf && <span style={{position:'absolute',bottom:8,left:8,background:'rgba(0,0,0,.4)',borderRadius:6,padding:'2px 6px',fontSize:9,color:'rgba(255,255,255,.7)'}}>re-upload needed</span>}
           </div>
           <div style={{padding:'12px 14px 14px'}}>
@@ -339,8 +339,8 @@ function BookCard({ book, hasPdf, onClick, onDelete, onRename }: {
         </button>
 
         {/* Three-dot menu */}
-        <div ref={menuRef} style={{position:'absolute',top:8,right:8,zIndex:10}}>
-          <button className="book-actions" aria-label={`Actions for ${book.title}`} aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:26,height:26,borderRadius:'50%',background:menu?'rgba(0,0,0,.45)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:menu?1:0,transition:'all .18s',color:'white'}}>
+        <div className="library-menu-anchor" ref={menuRef} style={{position:'absolute',top:12,right:12,zIndex:10}}>
+          <button className="book-actions" aria-label={`Actions for ${book.title}`} aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(m=>!m)}} style={{width:36,height:36,borderRadius:'50%',background:'var(--bg-card)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:1,transition:'opacity .15s',color:'var(--ink)'}}>
             <Icon name="more" size={13} />
           </button>
           {menu && (
@@ -442,7 +442,7 @@ export default function Library({
       setPdfIds(ids=>new Set([...ids,id]))
       setBooks(prev=>[...prev,book])
       if(toastRef.current) clearTimeout(toastRef.current)
-      showToast('success',`"${title}" added — ${numPages} pages`)
+      showToast('success',`"${title}" added — ${plural(numPages, 'page')}`)
     } catch(e) { console.error(e); showToast('error','Could not read this PDF. Try another file.') }
   },[showToast])
 
@@ -559,7 +559,7 @@ export default function Library({
         <div style={{padding:'32px clamp(16px,4vw,52px) 130px',maxWidth:1400,margin:'0 auto',width:'100%'}}>
           <h1 className="page-title">Your <em className="title-accent">library.</em></h1>
           <div style={{fontSize:12,color:'var(--text-3)',marginBottom:18}}>
-            {books.length} book{books.length!==1?'s':''}
+            {plural(books.length, 'book')}
             {books.filter(b=>b.currentPage>1&&b.totalPages>1&&b.currentPage<b.totalPages).length>0?` · ${books.filter(b=>b.currentPage>1&&b.currentPage<b.totalPages).length} in progress`:''}
           </div>
 
